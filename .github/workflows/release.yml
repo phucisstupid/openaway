@@ -9,6 +9,11 @@ on:
         description: Existing version tag to release (for example, v0.4.7)
         required: true
         type: string
+      update_cask_only:
+        description: Only sync the cask for an already published release
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -19,6 +24,7 @@ concurrency:
 
 jobs:
   release:
+    if: ${{ !inputs.update_cask_only }}
     runs-on: macos-26
     timeout-minutes: 30
     permissions:
@@ -65,3 +71,54 @@ jobs:
           gh release create "$RELEASE_TAG" \
             dist/OpenAway-macos.zip dist/OpenAway-macos.zip.sha256 \
             --verify-tag --title "OpenAway ${RELEASE_TAG#v}" --notes "$RELEASE_NOTES"
+
+  update-cask:
+    needs: release
+    if: ${{ !cancelled() && (needs.release.result == 'success' || (github.event_name == 'workflow_dispatch' && inputs.update_cask_only)) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    concurrency:
+      group: cask-update
+      cancel-in-progress: false
+    env:
+      RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+      DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+      - name: Test cask updater
+        run: ruby scripts/test-cask.rb
+      - name: Sync cask with published release
+        run: |
+          set -euo pipefail
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          LATEST_TAG=$(gh release view --json tagName --jq '.tagName')
+          if [[ "$RELEASE_TAG" != "$LATEST_TAG" ]]; then
+            echo "Skipping $RELEASE_TAG; latest stable release is $LATEST_TAG"
+            exit 0
+          fi
+          ASSET_DIR=$(mktemp -d)
+          trap 'rm -rf "$ASSET_DIR"' EXIT
+          gh release download "$RELEASE_TAG" --pattern 'OpenAway-macos.zip*' --dir "$ASSET_DIR"
+          read -r CHECKSUM ASSET_NAME < "$ASSET_DIR/OpenAway-macos.zip.sha256"
+          [[ "$CHECKSUM" =~ ^[a-f0-9]{64}$ && "$ASSET_NAME" == "OpenAway-macos.zip" ]]
+          [[ "$(sha256sum "$ASSET_DIR/OpenAway-macos.zip" | cut -d ' ' -f 1)" == "$CHECKSUM" ]]
+          ruby scripts/update-cask.rb "${RELEASE_TAG#v}" "$CHECKSUM" Casks/openaway.rb
+          ruby -c Casks/openaway.rb
+      - name: Commit cask update
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- Casks/openaway.rb; then
+            echo "No cask update needed"
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add Casks/openaway.rb
+          git commit -m "Update OpenAway cask to ${RELEASE_TAG#v}"
+          git push origin "HEAD:$DEFAULT_BRANCH"

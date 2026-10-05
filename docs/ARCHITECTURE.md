@@ -118,3 +118,13 @@ reminder panel fades/slides without activation and honors Reduce Motion.
 
 Actual multi-monitor hardware behavior and
 login-item approval still need manual validation on supported macOS versions.
+
+## Releases
+
+`release.yml` verifies the version tag, tests and builds the universal app, and
+publishes its ZIP and SHA256. A dependent job checks out the default branch,
+downloads and verifies the published assets, and commits only the cask version
+and checksum using the Actions token. It serializes cask updates, skips outdated
+releases and unchanged files, and never force-pushes. A cask-only manual dispatch
+can recover a failed update without changing an existing release. The updater's
+focused Ruby checks run before every cask synchronization.

@@ -87,9 +87,16 @@ Finder metadata on the app copied into a synced folder can affect signature chec
    and push the changes.
 2. Push an annotated `v<version>` tag to trigger the release workflow. Tag notes
    become the release notes. Wait for the workflow to publish both assets.
-3. Update `version` and `sha256` in `Casks/openaway.rb` using the published
-   `OpenAway-macos.zip.sha256`, then commit and push the cask update. Never use
-   a local build's checksum for a workflow-built release.
+3. The workflow downloads the published ZIP/checksum, verifies them, and commits
+   the cask's `version` and `sha256` to the default branch as the Actions bot.
+   It skips older releases and unchanged casks. Never use a local build's checksum
+   for a workflow-built release.
+
+If publishing succeeds but the cask update fails, dispatch `Release` with the
+existing tag and `update_cask_only` enabled. This does not rebuild or replace the
+release. Branch protection must permit the bot's normal push; concurrent branch
+changes cause a visible failure rather than a force push. Verify updater changes
+with `ruby scripts/test-cask.rb`.
 
 Update README and architecture notes when behavior changes. Use original artwork,
 preserve the MIT license, and describe OpenAway as an independent project.
