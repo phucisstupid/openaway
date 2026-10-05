@@ -4,6 +4,7 @@ import OpenAwayCore
 
 struct InsightsView: View {
     @ObservedObject var model: AppModel
+    @ViewState private var showingClear = false
     private var days: [Date] { (0..<7).reversed().compactMap { Calendar.current.date(byAdding: .day, value: -$0, to: Calendar.current.startOfDay(for: Date())) } }
     private func count(_ date: Date) -> Int { model.records.filter { $0.completed && Calendar.current.isDate($0.date, inSameDayAs: date) }.count }
     private var weekly: Int { days.reduce(0) { $0 + count($1) } }
@@ -44,7 +45,16 @@ struct InsightsView: View {
             }
             Card {
                 VStack(alignment: .leading, spacing: 17) {
-                    SectionLabel(title: "Recent moments", detail: "Your latest breaks, kept only on this Mac.")
+                    HStack {
+                        SectionLabel(title: "Recent moments", detail: "Your latest breaks, kept only on this Mac.")
+                        Spacer()
+                        Button { showingClear = true } label: {
+                            Label("Clear history", systemImage: "trash")
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                        .disabled(model.records.isEmpty)
+                    }
                     if model.records.isEmpty {
                         VStack(spacing: 12) {
                             Image(systemName: "cup.and.saucer").font(.system(size: 29, weight: .ultraLight)).foregroundStyle(Palette.accent)
@@ -73,6 +83,10 @@ struct InsightsView: View {
                 }
             }
         }
+        .alert("Clear all break history?", isPresented: $showingClear) {
+            Button("Cancel", role: .cancel) {}
+            Button("Clear history", role: .destructive) { model.clearHistory() }
+        } message: { Text("This permanently removes your activity and resets your statistics. This cannot be undone.") }
     }
     private var restLabel: String {
         if model.restedTodaySeconds < 60 { return "\(model.restedTodaySeconds) sec" }

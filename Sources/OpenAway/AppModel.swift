@@ -16,17 +16,20 @@ final class AppModel: ObservableObject {
     }
     @Published private(set) var engine: BreakEngine
     @Published private(set) var records: [BreakRecord]
-    @Published var selectedPage = "overview"
+    @Published var selectedPage = "general"
     @Published var reminderText: String?
     @Published private(set) var reminderKind: ReminderKind = .posture
     @Published private(set) var isReminderPreview = false
     @Published var launchAtLoginError: String?
+    @Published private(set) var breakImage: NSImage?
+    @Published private(set) var breakImageError: String?
     @Published private(set) var isPreviewing = false
     @Published private(set) var escapeArmed = false
 
     weak var coordinator: AppDelegate?
     private let defaults: UserDefaults
     private let persists: Bool
+    private let breakImageDirectory: URL
     private let activityMonitor = ActivityMonitor()
     private var timer: Timer?
     private var synchronizingSettings = false
@@ -43,9 +46,13 @@ final class AppModel: ObservableObject {
     private var reminderExpiresAt: Date?
     private var escapeExpiresAt: Date?
 
-    init(defaults: UserDefaults = .standard, persists: Bool = true) {
+    init(defaults: UserDefaults = .standard, persists: Bool = true, breakImageDirectory: URL? = nil) {
         self.defaults = defaults
         self.persists = persists
+        self.breakImageDirectory = breakImageDirectory ?? (persists
+            ? FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+                .appendingPathComponent("org.openaway.OpenAway", isDirectory: true)
+            : FileManager.default.temporaryDirectory.appendingPathComponent("OpenAway-\(UUID().uuidString)", isDirectory: true))
         var restored = persists ? Self.decode(AppSettings.self, key: "settings.v1", defaults: defaults) ?? AppSettings() : AppSettings()
         restored.normalize()
         if persists {
@@ -54,6 +61,7 @@ final class AppModel: ObservableObject {
         settings = restored
         engine = BreakEngine(settings: restored)
         records = persists ? Self.decode([BreakRecord].self, key: "history.v1", defaults: defaults) ?? [] : []
+        breakImage = Self.loadBreakImage(at: restored.breakImagePath)
         if persists && SMAppService.mainApp.status == .requiresApproval {
             launchAtLoginError = "Allow OpenAway in System Settings → General → Login Items."
         }
@@ -189,6 +197,46 @@ final class AppModel: ObservableObject {
     }
 
     func removeExcludedApp(_ id: String) { settings.excludedBundleIDs.removeAll { $0 == id } }
+
+    func chooseBreakImage() {
+        breakImageError = nil
+        let panel = NSOpenPanel()
+        panel.title = "Choose a break picture"
+        panel.prompt = "Choose Picture"
+        panel.allowedContentTypes = [.image]
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = false
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        do {
+            try importBreakImage(from: url)
+        } catch {
+            breakImageError = "Could not use this picture. \(error.localizedDescription)"
+        }
+    }
+
+    func importBreakImage(from url: URL) throws {
+        let data = try Data(contentsOf: url)
+        guard let image = NSImage(data: data), image.isValid else { throw CocoaError(.fileReadCorruptFile) }
+        try FileManager.default.createDirectory(at: breakImageDirectory, withIntermediateDirectories: true)
+        let destination = breakImageDirectory.appendingPathComponent("break-background")
+        try data.write(to: destination, options: .atomic)
+        var updated = settings
+        updated.breakImagePath = destination.path
+        updated.breakImageName = url.lastPathComponent
+        updated.breakTheme = "picture"
+        settings = updated
+        breakImage = image
+        breakImageError = nil
+    }
+
+    func removeBreakImage() {
+        var updated = settings
+        updated.breakImagePath = nil
+        updated.breakImageName = nil
+        if updated.breakTheme == "picture" { updated.breakTheme = "blur" }
+        settings = updated
+        breakImageError = nil
+    }
 
     func previewBreak() {
         // A preview only changes presentation. The real session continues untouched.
@@ -368,6 +416,54 @@ final class AppModel: ObservableObject {
         return model.settings == AppSettings() && model.records == history && !history.isEmpty
     }
 
+    static func breakImageSmokeCheck(presentationMatches: (AppModel) -> Bool) -> Bool {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("OpenAway-picture-test-\(UUID().uuidString)")
+        let suiteName = "org.openaway.picture-test.\(UUID().uuidString)"
+        guard let defaults = UserDefaults(suiteName: suiteName),
+              let bitmap = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: 2, pixelsHigh: 2,
+                                            bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true,
+                                            isPlanar: false, colorSpaceName: .calibratedRGB, bytesPerRow: 0, bitsPerPixel: 0) else { return false }
+        defer {
+            try? FileManager.default.removeItem(at: directory)
+            defaults.removePersistentDomain(forName: suiteName)
+        }
+        for x in 0..<2 {
+            for y in 0..<2 { bitmap.setColor(NSColor(calibratedRed: 1, green: 0, blue: 0, alpha: 1), atX: x, y: y) }
+        }
+        guard let data = bitmap.representation(using: .png, properties: [:]) else { return false }
+        do {
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            let source = directory.appendingPathComponent("Picture.png")
+            try data.write(to: source)
+            let storage = directory.appendingPathComponent("Imported")
+            let model = AppModel(defaults: defaults, persists: true, breakImageDirectory: storage)
+            try model.importBreakImage(from: source)
+            guard model.settings.breakTheme == "picture", model.breakImage != nil,
+                  model.settings.breakImageName == "Picture.png", let path = model.settings.breakImagePath,
+                  try Data(contentsOf: URL(fileURLWithPath: path)) == data else { return false }
+            let saved = model.settings
+            let invalid = directory.appendingPathComponent("Invalid.png")
+            try Data("not an image".utf8).write(to: invalid)
+            do { try model.importBreakImage(from: invalid); return false } catch {}
+            guard model.settings == saved, model.breakImage != nil else { return false }
+            try FileManager.default.removeItem(at: source)
+            let restored = AppModel(defaults: defaults, persists: true, breakImageDirectory: storage)
+            guard restored.breakImage != nil, restored.settings.breakImagePath == path,
+                  presentationMatches(restored) else { return false }
+            restored.removeBreakImage()
+            guard restored.settings.breakTheme == "blur", restored.breakImage == nil,
+                  restored.settings.breakImagePath == nil, restored.settings.breakImageName == nil,
+                  !FileManager.default.fileExists(atPath: path) else { return false }
+            let missing = AppModel(persists: false, breakImageDirectory: storage)
+            missing.settings = saved
+            guard missing.breakImage == nil else { return false }
+            missing.resetSettings()
+            return missing.settings == AppSettings() && missing.breakImage == nil
+        } catch {
+            return false
+        }
+    }
+
     func countdownSmokeCheck(presentationMatches: () -> Bool) -> Bool {
         stop()
         let now = Date().addingTimeInterval(-30)
@@ -411,6 +507,13 @@ final class AppModel: ObservableObject {
         guard !synchronizingSettings else { return }
         synchronizingSettings = true
         settings.normalize()
+        if oldValue.breakImagePath != settings.breakImagePath {
+            breakImage = Self.loadBreakImage(at: settings.breakImagePath)
+            breakImageError = nil
+            if settings.breakImagePath == nil {
+                try? FileManager.default.removeItem(at: breakImageDirectory.appendingPathComponent("break-background"))
+            }
+        }
         engine.updateSettings(settings, now: Date())
         if oldValue.blinkReminderEnabled != settings.blinkReminderEnabled { blinkElapsed = 0 }
         if oldValue.postureReminderEnabled != settings.postureReminderEnabled { postureElapsed = 0 }
@@ -444,5 +547,10 @@ final class AppModel: ObservableObject {
     private static func decode<T: Decodable>(_ type: T.Type, key: String, defaults: UserDefaults) -> T? {
         guard let data = defaults.data(forKey: key) else { return nil }
         return try? JSONDecoder().decode(type, from: data)
+    }
+
+    private static func loadBreakImage(at path: String?) -> NSImage? {
+        guard let path, let image = NSImage(contentsOfFile: path), image.isValid else { return nil }
+        return image
     }
 }

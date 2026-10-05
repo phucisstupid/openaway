@@ -20,7 +20,9 @@ public struct AppSettings: Codable, Equatable, Sendable {
     public var showCountdownInMenuBar = true
     public var launchAtLogin = false
     public var appearance = "system"
-    public var breakTheme = "grove"
+    public var breakTheme = "blur"
+    public var breakImagePath: String?
+    public var breakImageName: String?
     public var breakMessage = "Look up. Breathe out."
     public var excludedBundleIDs: [String] = []
 
@@ -35,7 +37,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
         blinkIntervalMinutes = min(max(blinkIntervalMinutes, 1), 60)
         postureIntervalMinutes = min(max(postureIntervalMinutes, 1), 180)
         if !["system", "light", "dark"].contains(appearance) { appearance = "system" }
-        if !["grove", "ocean", "dusk", "blur"].contains(breakTheme) { breakTheme = "grove" }
+        if !["blur", "wallpaper", "picture"].contains(breakTheme) { breakTheme = "blur" }
         breakMessage = String(breakMessage.trimmingCharacters(in: .whitespacesAndNewlines).prefix(160))
         if breakMessage.isEmpty { breakMessage = "Look up. Breathe out." }
         var seen = Set<String>()
@@ -51,7 +53,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
         case pauseForMeetings, pauseForVideo
         case resetAfterIdle, soundEnabled, blinkReminderEnabled, blinkIntervalMinutes
         case postureReminderEnabled, postureIntervalMinutes, showCountdownInMenuBar
-        case launchAtLogin, appearance, breakTheme, breakMessage, excludedBundleIDs
+        case launchAtLogin, appearance, breakTheme, breakImagePath, breakImageName, breakMessage, excludedBundleIDs
     }
 
     public init(from decoder: Decoder) throws {
@@ -76,6 +78,8 @@ public struct AppSettings: Codable, Equatable, Sendable {
         launchAtLogin = try values.decodeIfPresent(Bool.self, forKey: .launchAtLogin) ?? launchAtLogin
         appearance = try values.decodeIfPresent(String.self, forKey: .appearance) ?? appearance
         breakTheme = try values.decodeIfPresent(String.self, forKey: .breakTheme) ?? breakTheme
+        breakImagePath = try values.decodeIfPresent(String.self, forKey: .breakImagePath)
+        breakImageName = try values.decodeIfPresent(String.self, forKey: .breakImageName)
         breakMessage = try values.decodeIfPresent(String.self, forKey: .breakMessage) ?? breakMessage
         excludedBundleIDs = try values.decodeIfPresent([String].self, forKey: .excludedBundleIDs) ?? excludedBundleIDs
         normalize()

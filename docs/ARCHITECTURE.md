@@ -50,28 +50,57 @@ overlay window per display. Overlay windows join Spaces and support native
 full-screen apps. Two distinct Escape presses within two seconds, or the visible Skip button, allow dismissal. The prior
 application is restored after the break when appropriate. Changes to the display
 configuration rebuild overlays.
+The status menu opens General through Settings and labels its reminder toggle
+Pause or Resume. It has no duplicate Open OpenAway command.
 
 Blur mode uses an active `NSVisualEffectView` with `behindWindow` blending in clear,
 nonopaque break windows. The desktop is never captured. The message and countdown
 sit in the center, with glass actions along the bottom. The top-center reminder panel cannot become key or main, keeping
 the foreground application's typing focus throughout the warning and wait.
 
+Desktop blur is the default background; removed landscape themes migrate to it.
+Wallpaper blur reads each display's image through `NSWorkspace.desktopImageURL(for:)`
+on presentation and Space changes, then fills, blurs, and dims it. No screen capture
+is used. Unavailable or unsupported wallpapers fall back to desktop blur.
+The native image picker validates images with AppKit and atomically saves a local
+copy in the app's Application Support directory. The settings store its path and
+original name, and `AppModel` caches the decoded image. `BreakBackgroundView` fills
+each break overlay's display and dims pictures for text contrast. The native image
+smoke check uses the same renderer. Missing pictures fall back to desktop blur.
+Removing a picture or resetting settings clears the cached image and local copy.
+
 The dashboard uses `NSSplitViewController` with a full-height sidebar
 `NSSplitViewItem`, compact settings groups, and Swift Charts. AppKit owns the
 sidebar material, rounded glass on macOS 26+, and native window-control layout.
 The compact sidebar uses a native SwiftUI `List(selection:)` with `.sidebar`
-style for Overview, General, Activity, and About. macOS owns selection
-highlighting, keyboard navigation, and row insets. General contains all
-preferences in a native grouped `Form`; less-used options use native
-`DisclosureGroup` controls. The default window expands to
+style for General, Wellness Reminders, Appearance, Keyboard Shortcuts, Activity,
+and About. General is the startup and default page.
+Standard `Label` controls use SF Symbols with system icon sizing and row spacing;
+macOS owns selection highlighting, keyboard navigation, and row insets. General
+contains routine and application preferences in a native grouped `Form`, with all
+sections expanded. Wellness Reminders sits directly below General in the sidebar
+and contains separate Blink and Posture sections with toggles, intervals, and
+previews in its own grouped form. Dependent controls stay visible and are disabled
+when their feature is off.
+Numeric rows use native `LabeledContent` for label alignment.
+Appearance contains native segmented controls for Mode (System/Light/Dark) and
+Background (Blur Desktop/Blur Wallpaper/User Image), plus the message and preview.
+Keyboard Shortcuts lists the app's
+commands in their own grouped forms. About shows the app identity, version from
+the bundle, a short description, and a native link to the OpenAway GitHub repository.
+Activity owns history deletion in its Recent moments header, with destructive
+confirmation; the action is disabled when history is empty. The default window expands to
 1200 by 900 points, bounded by the screen's available area. The selected sidebar
 row identifies the current section without a repeated header in the detail pane.
-Both panes remain scrollable with hidden scroll indicators. Reset to Defaults is
+The sidebar, settings pages, and Activity remain scrollable; compact About centers
+its content in the full detail pane. General uses the system scroll indicator. Reset to Defaults is
 the final option in General and preserves break history.
 Liquid Glass uses the system glassEffect/button APIs on macOS 26+, with native
-material/control fallbacks. SwiftUI views observe `AppModel`. Shared colors and original vector landscapes
+material/control fallbacks. SwiftUI views observe `AppModel`. Shared colors and background renderers
 live in `Theme.swift`. Custom message editing uses a draft committed on submission
 or focus loss, so validation does not interfere with typing spaces.
+The dashboard window ends native field editing on outside clicks without
+consuming the click, so blank space clears focus and controls remain responsive.
 
 ## Verification
 
@@ -83,7 +112,8 @@ or undiscoverable test class; it is not a general-purpose XCTest replacement.
 The bundled executable's `--smoke-test` uses transient settings/history and checks
 real dashboard, reminder, and overlay lifecycles. It also simulates sleep, lock,
 and foreground exclusion transitions. ActivityMonitor uses passive CoreAudio/AVFoundation metadata; video classification
-is an audio-based heuristic, with known limits documented in README. The floating
+is an audio-based heuristic: muted video can be missed, while browser audio can
+pause reminders. The floating
 reminder panel fades/slides without activation and honors Reduce Motion.
 
 Actual multi-monitor hardware behavior and

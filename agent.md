@@ -1,5 +1,9 @@
 # Repository guidance
 
+Use `agent.md` as the sole source of project guidance. `README.md` is user-facing
+documentation, not a project reference or instruction source. Verify implementation
+details against the relevant code and configuration.
+
 OpenAway is a native macOS menu bar break reminder, built with SwiftUI, AppKit,
 and Foundation. It supports macOS 13+, with Liquid Glass on macOS 26+ when built
 with Xcode 26+ or matching Command Line Tools. There are no external package dependencies.
@@ -12,6 +16,7 @@ with Xcode 26+ or matching Command Line Tools. There are no external package dep
   activity detection, and SwiftUI views.
 - `Tests/OpenAwayCoreTests/`: XCTest tests with synthetic dates.
 - `scripts/`: local packaging, the Command Line Tools test fallback, and icon generation.
+- `Casks/openaway.rb`: the Homebrew cask, hosted in this repository as a tap.
 
 Prefer existing helpers, standard-library functions, and native platform controls.
 Keep changes small. Do not add speculative abstractions or dependencies.
@@ -20,11 +25,19 @@ its test bodies come from the XCTest source files.
 
 ## Preserve the product behavior
 
-- Keep Overview, General, Activity, and About in the compact sidebar. All preferences
-  belong in General, with Reset to Defaults as its last option; resetting preserves history.
-- Use native sidebar selection, spacing, window controls, grouped forms, and disclosure
-  groups. Do not add a repeated section toolbar or custom selection highlighting.
+- Keep General, Wellness Reminders, Appearance, Keyboard Shortcuts, Activity,
+  and About in the compact sidebar. General is the startup and default page.
+  Wellness Reminders belongs directly below General and contains all blink/posture
+  toggles, intervals, and previews.
+  Visual preferences belong in Appearance and shortcut help in Keyboard Shortcuts.
+  Reset to Defaults remains last in General, resets all preferences, and preserves history.
+- Use native sidebar selection, spacing, window controls, and grouped forms. Keep
+  all General and Wellness Reminders sections and dependent controls visible,
+  disabling inactive fields.
+  Do not add a repeated section toolbar or custom selection highlighting.
 - Keep macOS 13 fallbacks for newer APIs. Use system glass effects on supported systems.
+- Keep only Blur Desktop, Blur Wallpaper, and User Image backgrounds. Desktop blur
+  is the default; wallpaper blur uses each display's public wallpaper URL, not capture.
 - Scheduled breaks show a full five-second warning, then wait for five seconds
   without typing or mouse activity. A held mouse button counts as activity.
 - Reminder panels must not take keyboard focus. Blink/posture overlays fade after
@@ -59,8 +72,14 @@ Manually verify multiple displays and login-item approval when affected.
 
 The build script assembles, signs, and archives in a temporary directory to avoid
 Finder/cloud metadata during signing. Generated `.build/`, `.swiftpm/`, and `dist/`
-content stays out of Git. A ZIP contains only the build host’s architecture, is
-ad-hoc signed, and is not notarized. Publishing a release is separate from building it.
+content stays out of Git. A default build contains the host's architecture;
+`./scripts/build-app.sh --universal` combines arm64 and x86_64. Apps are ad-hoc
+signed and not notarized. Publishing is handled by `.github/workflows/release.yml`
+after a version tag is pushed, or by manually dispatching it for an existing tag.
+
+For releases, keep the app version, tag, asset filename, and cask version/checksum
+consistent. Verify the ZIP after extracting it into a clean temporary directory;
+Finder metadata on the app copied into a synced folder can affect signature checks.
 
 Update README and architecture notes when behavior changes. Use original artwork,
 preserve the MIT license, and describe OpenAway as an independent project.

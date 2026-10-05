@@ -70,7 +70,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
 
     func showDashboard() {
         if dashboard == nil {
-            let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1080, height: 750),
+            let window = DashboardWindow(contentRect: NSRect(x: 0, y: 0, width: 1080, height: 750),
                                   styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
                                   backing: .buffered, defer: false)
             window.title = "OpenAway"
@@ -143,7 +143,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
             window.hasShadow = false
             window.backgroundColor = .clear
             window.isReleasedWhenClosed = false
-            window.contentView = NSHostingView(rootView: BreakOverlayView(model: model))
+            window.contentView = NSHostingView(rootView: BreakOverlayView(model: model, screen: screen))
             window.onEscape = { [weak self] isRepeat in self?.model.handleEscape(isRepeat: isRepeat) }
             window.setFrame(screen.frame, display: true)
             breakWindows.append(window)
@@ -272,14 +272,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         summary.isEnabled = false
         menu.addItem(summary)
         menu.addItem(.separator())
-        addItem("Open OpenAway", action: #selector(openDashboard), to: menu)
         addItem("Take a Break", action: #selector(takeBreak), key: "b", modifiers: [.command, .shift], to: menu)
         addItem("Take a Long Break", action: #selector(takeLongBreak), to: menu)
         if model.engine.phase == .resting || model.engine.phase == .preparing || model.isPreviewing {
             addItem(model.isPreviewing ? "Close Preview" : "Skip This Break", action: #selector(skip), to: menu)
         }
         menu.addItem(.separator())
-        addItem(model.engine.phase == .paused ? "Resume Reminders" : "Pause Reminders", action: #selector(togglePause), key: "p", modifiers: [.command, .shift], to: menu)
+        addItem(model.engine.phase == .paused ? "Resume" : "Pause", action: #selector(togglePause), key: "p", modifiers: [.command, .shift], to: menu)
         let pause = NSMenuItem(title: "Pause for…", action: nil, keyEquivalent: "")
         let pauseMenu = NSMenu()
         for minutes in [15, 30, 60] {
@@ -326,7 +325,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         main.addItem(edit)
         let window = NSMenuItem()
         window.submenu = NSMenu(title: "Window")
-        addItem("Open OpenAway", action: #selector(openDashboard), key: "0", to: window.submenu!)
         window.submenu?.addItem(withTitle: "Close", action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w")
         window.submenu?.addItem(withTitle: "Minimize", action: #selector(NSWindow.performMiniaturize(_:)), keyEquivalent: "m")
         main.addItem(window)
@@ -371,7 +369,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         }
     }
 
-    @objc private func openDashboard() { showDashboard() }
     @objc private func openSettings() { model.selectedPage = "general"; showDashboard() }
     @objc private func openAbout() { model.selectedPage = "about"; showDashboard() }
     @objc private func takeBreak() { model.startBreak() }
@@ -396,10 +393,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
             guard let button = dashboard?.standardWindowButton(type), let view = sidebar?.viewController.view else { return false }
             return view.bounds.contains(view.convert(NSPoint(x: button.bounds.midX, y: button.bounds.midY), from: button))
         }, "native window controls remain inside the sidebar")
+        check(model.selectedPage == "general", "dashboard defaults to General")
         openSettings()
-        check(model.selectedPage == "general" && DashboardView.pages.map(\.id) == ["overview", "general", "insights", "about"],
-              "settings opens General in the simplified four-page sidebar")
+        check(model.selectedPage == "general" && DashboardView.pages.map(\.id) == ["general", "wellness", "appearance", "shortcuts", "insights", "about"],
+              "settings opens General with Wellness Reminders directly below it")
+        let statusMenu = NSMenu()
+        menuNeedsUpdate(statusMenu)
+        check(statusMenu.items.filter { $0.action == #selector(openSettings) }.count == 1
+              && !statusMenu.items.contains { $0.title == "Open OpenAway" }
+              && NSApp.mainMenu?.items.compactMap(\.submenu).allSatisfy { menu in
+                  !menu.items.contains { $0.title == "Open OpenAway" }
+              } == true, "menus keep Settings without redundant Open OpenAway commands")
+        check(statusMenu.items.first { $0.action == #selector(togglePause) }?.title == "Pause",
+              "active reminders show Pause in the status menu")
         check(AppModel.resetSettingsSmokeCheck(), "reset restores all preferences and preserves break history")
+        check(AppModel.breakImageSmokeCheck { pictureModel in
+            let renderer = ImageRenderer(content: BreakBackgroundView(model: pictureModel).frame(width: 120, height: 80))
+            guard let image = renderer.cgImage,
+                  let context = CGContext(data: nil, width: 120, height: 80, bitsPerComponent: 8, bytesPerRow: 480,
+                                          space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue),
+                  let data = context.data else { return false }
+            context.draw(image, in: CGRect(x: 0, y: 0, width: 120, height: 80))
+            let pixels = data.bindMemory(to: UInt8.self, capacity: 120 * 80 * 4)
+            let center = (40 * 120 + 60) * 4
+            return Int(pixels[center]) > 25 && Int(pixels[center]) > Int(pixels[center + 1]) + 25
+                && Int(pixels[center]) > Int(pixels[center + 2]) + 25
+        }, "picture import persists, renders its pixels, rejects invalid images, and resets safely")
         check(ActivityMonitor.smokeCheck(), "activity metadata matching, disabled state, and unchanged permissions")
         check(AppModel.reminderSmokeCheck(), "overlapping reminders wait until the current overlay ends")
         check(model.countdownSmokeCheck { [self] in
@@ -444,6 +463,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         model.startBreak()
         model.pause(minutes: nil)
         check(model.engine.phase == .paused && breakWindows.isEmpty, "pause hides break windows")
+        menuNeedsUpdate(statusMenu)
+        check(statusMenu.items.first { $0.action == #selector(togglePause) }?.title == "Resume",
+              "paused reminders show Resume in the status menu")
         model.resume()
         check(model.engine.phase == .resting && !breakWindows.isEmpty, "resume restores break windows")
         model.setSleeping(true)
@@ -487,6 +509,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         else { fputs("OpenAway platform smoke test FAILED: \(failures.joined(separator: ", "))\n", stderr) }
         model.stop()
         if failures.isEmpty { NSApp.terminate(nil) } else { exit(1) }
+    }
+}
+
+private final class DashboardWindow: NSWindow {
+    override func sendEvent(_ event: NSEvent) {
+        if event.type == .leftMouseDown, let editor = firstResponder as? NSTextView,
+           editor.isFieldEditor,
+           !editor.visibleRect.contains(editor.convert(event.locationInWindow, from: nil)) {
+            makeFirstResponder(nil)
+        }
+        super.sendEvent(event)
     }
 }
 

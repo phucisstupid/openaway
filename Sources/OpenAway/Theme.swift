@@ -35,18 +35,6 @@ extension View {
     }
 }
 
-struct AwayMark: View {
-    var size: CGFloat = 36
-    var body: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: size * 0.31).fill(Palette.accent)
-            Image(systemName: "leaf.fill")
-                .font(.system(size: size * 0.53, weight: .medium)).rotationEffect(.degrees(-18))
-                .foregroundStyle(Palette.background)
-        }.frame(width: size, height: size)
-    }
-}
-
 struct Card<Content: View>: View {
     var padding: CGFloat = 22
     @ViewBuilder var content: Content
@@ -54,21 +42,6 @@ struct Card<Content: View>: View {
         GroupBox {
             content.padding(max(0, padding - 10)).frame(maxWidth: .infinity, alignment: .leading)
         }
-    }
-}
-
-struct SettingsIcon: View {
-    let symbol: String
-    var color: Color = .pink
-    var size: CGFloat = 28
-    var body: some View {
-        Image(systemName: symbol)
-            .font(.system(size: size * 0.52, weight: .semibold))
-            .foregroundStyle(.white)
-            .frame(width: size, height: size)
-            .background(LinearGradient(colors: [color.opacity(0.8), color], startPoint: .topLeading, endPoint: .bottomTrailing),
-                        in: RoundedRectangle(cornerRadius: size * 0.24))
-            .accessibilityHidden(true)
     }
 }
 
@@ -121,7 +94,24 @@ struct NumberPreference: View {
     var unit: String = "min"
     var step: Int = 1
     var body: some View {
-        HStack(spacing: 16) {
+        LabeledContent {
+            HStack(spacing: 8) {
+                TextField(title, value: $value, formatter: Self.formatter)
+                    .textFieldStyle(.roundedBorder)
+                    .labelsHidden()
+                    .multilineTextAlignment(.trailing)
+                    .monospacedDigit()
+                    .frame(width: 56)
+                    .accessibilityLabel("\(title), \(unit)")
+                    .onSubmit { value = min(range.upperBound, max(range.lowerBound, value)) }
+                Text(unit).foregroundStyle(.secondary)
+                    .fixedSize().frame(width: 80, alignment: .leading)
+                Stepper(title, value: $value, in: range, step: step)
+                    .labelsHidden()
+                    .accessibilityLabel("\(title), \(unit)")
+            }
+            .fixedSize(horizontal: true, vertical: false)
+        } label: {
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
                 if !detail.isEmpty {
@@ -129,26 +119,9 @@ struct NumberPreference: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
-            .layoutPriority(1)
-            Spacer(minLength: 0)
-            HStack(spacing: 8) {
-                TextField(title, value: $value, formatter: Self.formatter)
-                    .textFieldStyle(.roundedBorder)
-                    .labelsHidden()
-                    .multilineTextAlignment(.trailing)
-                    .monospacedDigit()
-                    .frame(width: 64)
-                    .accessibilityLabel("\(title), \(unit)")
-                    .onSubmit { value = min(range.upperBound, max(range.lowerBound, value)) }
-                Text(unit).foregroundStyle(.secondary)
-                    .frame(width: 64, alignment: .leading)
-                Stepper(title, value: $value, in: range, step: step)
-                    .labelsHidden()
-                    .accessibilityLabel("\(title), \(unit)")
-            }
-            .fixedSize(horizontal: true, vertical: false)
+            .fixedSize(horizontal: false, vertical: true)
         }
-        .frame(minHeight: 28)
+        .accessibilityElement(children: .contain)
     }
     private static var formatter: NumberFormatter {
         let formatter = NumberFormatter()
@@ -163,6 +136,34 @@ func timeString(_ seconds: Int) -> String {
     return String(format: "%02d:%02d", safe / 60, safe % 60)
 }
 
+struct BreakBackgroundView: View {
+    @ObservedObject var model: AppModel
+    var screen: NSScreen? = nil
+
+    var body: some View {
+        Group {
+            if model.settings.breakTheme == "picture", let image = model.breakImage {
+                GeometryReader { geometry in
+                    Image(nsImage: image).resizable().scaledToFill()
+                        .frame(width: geometry.size.width, height: geometry.size.height).clipped()
+                        .overlay {
+                            LinearGradient(colors: [.black.opacity(0.45), .black.opacity(0.65)], startPoint: .top, endPoint: .bottom)
+                        }
+                }
+            } else if model.settings.breakTheme == "wallpaper" {
+                WallpaperBlurView(screen: screen)
+            } else {
+                DesktopBlurView()
+                    .overlay {
+                        LinearGradient(colors: [.black.opacity(0.12), .black.opacity(0.30)], startPoint: .top, endPoint: .bottom)
+                    }
+            }
+        }
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+}
+
 struct DesktopBlurView: NSViewRepresentable {
     func makeNSView(context: Context) -> NSVisualEffectView {
         let view = NSVisualEffectView()
@@ -175,46 +176,39 @@ struct DesktopBlurView: NSViewRepresentable {
     func updateNSView(_ view: NSVisualEffectView, context: Context) {}
 }
 
-struct LandscapeView: View {
-    var theme: String = "grove"
-    private var colors: [Color] {
-        switch theme {
-        case "ocean": return [Color(hex: 0xCCDFDD), Color(hex: 0xBCD5D5), Color(hex: 0x93BEBF), Color(hex: 0x6D9DA3), Color(hex: 0x4B7D8A)]
-        case "dusk": return [Color(hex: 0xEEDACA), Color(hex: 0xD4BDC3), Color(hex: 0xB5A3BA), Color(hex: 0x8C86A2), Color(hex: 0x696F88)]
-        default: return [Color(hex: 0xE3E9D5), Color(hex: 0xD2DEBD), Color(hex: 0xB4C7A0), Color(hex: 0x8CA980), Color(hex: 0x66896C)]
+struct WallpaperBlurView: View {
+    var screen: NSScreen? = nil
+    @ViewState private var image: NSImage?
+
+    var body: some View {
+        Group {
+            if let image {
+                GeometryReader { geometry in
+                    Image(nsImage: image).resizable().scaledToFill()
+                        .frame(width: geometry.size.width + 96, height: geometry.size.height + 96)
+                        .blur(radius: 32, opaque: true)
+                        .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
+                }.clipped()
+            } else {
+                DesktopBlurView()
+            }
+        }
+        .overlay {
+            LinearGradient(colors: [.black.opacity(0.45), .black.opacity(0.65)], startPoint: .top, endPoint: .bottom)
+        }
+        .onAppear(perform: loadWallpaper)
+        .onReceive(NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.activeSpaceDidChangeNotification)) { _ in
+            loadWallpaper()
         }
     }
-    var body: some View {
-        GeometryReader { proxy in
-            let w = proxy.size.width
-            let h = proxy.size.height
-            ZStack {
-                LinearGradient(colors: [colors[0], colors[1]], startPoint: .topLeading, endPoint: .bottomTrailing)
-                Circle().fill(Color.white.opacity(0.42)).frame(width: h * 0.31, height: h * 0.31)
-                    .position(x: w * 0.76, y: h * 0.25)
-                Circle().fill(Color.white.opacity(0.13)).frame(width: h * 0.44, height: h * 0.44)
-                    .position(x: w * 0.76, y: h * 0.25)
-                Path { path in
-                    path.move(to: CGPoint(x: 0, y: h * 0.74))
-                    path.addCurve(to: CGPoint(x: w, y: h * 0.42), control1: CGPoint(x: w * 0.43, y: h * 0.87), control2: CGPoint(x: w * 0.42, y: h * 0.04))
-                    path.addLine(to: CGPoint(x: w, y: h)); path.addLine(to: CGPoint(x: 0, y: h)); path.closeSubpath()
-                }.fill(colors[2])
-                Path { path in
-                    path.move(to: CGPoint(x: 0, y: h * 0.66))
-                    path.addCurve(to: CGPoint(x: w, y: h * 0.78), control1: CGPoint(x: w * 0.34, y: h * 0.38), control2: CGPoint(x: w * 0.66, y: h * 1.13))
-                    path.addLine(to: CGPoint(x: w, y: h)); path.addLine(to: CGPoint(x: 0, y: h)); path.closeSubpath()
-                }.fill(colors[3])
-                Path { path in
-                    path.move(to: CGPoint(x: 0, y: h * 0.95))
-                    path.addCurve(to: CGPoint(x: w, y: h * 0.82), control1: CGPoint(x: w * 0.58, y: h * 0.65), control2: CGPoint(x: w * 0.54, y: h * 0.68))
-                    path.addLine(to: CGPoint(x: w, y: h)); path.addLine(to: CGPoint(x: 0, y: h)); path.closeSubpath()
-                }.fill(colors[4])
-                // Fine contour lines make the landscape feel drawn, without bundled artwork.
-                Path { path in
-                    path.move(to: CGPoint(x: w * 0.47, y: h))
-                    path.addCurve(to: CGPoint(x: w * 0.94, y: h * 0.60), control1: CGPoint(x: w * 0.80, y: h * 0.64), control2: CGPoint(x: w * 0.68, y: h * 0.83))
-                }.stroke(Color.white.opacity(0.15), lineWidth: 1)
-            }
-        }.clipped().accessibilityHidden(true)
+
+    private func loadWallpaper() {
+        guard let screen = screen ?? NSScreen.main,
+              let url = NSWorkspace.shared.desktopImageURL(for: screen),
+              let wallpaper = NSImage(contentsOf: url), wallpaper.isValid else {
+            image = nil
+            return
+        }
+        image = wallpaper
     }
 }

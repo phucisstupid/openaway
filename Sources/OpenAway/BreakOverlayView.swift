@@ -3,21 +3,14 @@ import OpenAwayCore
 
 struct BreakOverlayView: View {
     @ObservedObject var model: AppModel
+    var screen: NSScreen? = nil
     private var seconds: Int { model.isPreviewing ? model.settings.breakDurationSeconds : model.engine.remainingSeconds }
     private var longBreak: Bool { !model.isPreviewing && model.engine.currentBreakKind == .long }
-    private var textColor: Color { model.settings.breakTheme == "blur" ? .white : Color(hex: 0x20382B) }
+    private var textColor: Color { .white }
     var body: some View {
         GeometryReader { geometry in
             ZStack {
-                if model.settings.breakTheme == "blur" {
-                    DesktopBlurView()
-                } else {
-                    LandscapeView(theme: model.settings.breakTheme)
-                }
-                if model.settings.breakTheme == "blur" {
-                    LinearGradient(colors: [.black.opacity(0.12), .black.opacity(0.30)], startPoint: .top, endPoint: .bottom)
-                        .allowsHitTesting(false)
-                }
+                BreakBackgroundView(model: model, screen: screen)
 
                 VStack(spacing: 28) {
                     Text(longBreak ? "Time to stretch." : model.settings.breakMessage)

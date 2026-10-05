@@ -11,6 +11,9 @@ final class AppSettingsTests: XCTestCase {
         XCTAssertTrue(settings.pauseForMeetings)
         XCTAssertTrue(settings.pauseForVideo)
         XCTAssertFalse(settings.launchAtLogin)
+        XCTAssertEqual(settings.breakTheme, "blur")
+        XCTAssertNil(settings.breakImagePath)
+        XCTAssertNil(settings.breakImageName)
     }
 
     func testNormalizationSafelyBoundsExtremeInputs() {
@@ -40,7 +43,7 @@ final class AppSettingsTests: XCTestCase {
         settings.excludedBundleIDs = [" com.apple.Keynote ", "", "com.apple.Keynote", "com.apple.Terminal"]
         settings.normalize()
         XCTAssertEqual(settings.appearance, "system")
-        XCTAssertEqual(settings.breakTheme, "grove")
+        XCTAssertEqual(settings.breakTheme, "blur")
         XCTAssertEqual(settings.breakMessage, "Look up. Breathe out.")
         XCTAssertEqual(settings.excludedBundleIDs, ["com.apple.Keynote", "com.apple.Terminal"])
         settings.breakMessage = String(repeating: "🌿", count: 200)
@@ -53,7 +56,9 @@ final class AppSettingsTests: XCTestCase {
         let settings = try JSONDecoder().decode(AppSettings.self, from: data)
         XCTAssertEqual(settings.breakIntervalMinutes, 10)
         XCTAssertEqual(settings.breakDurationSeconds, 5)
-        XCTAssertEqual(settings.breakTheme, "grove")
+        XCTAssertEqual(settings.breakTheme, "blur")
+        XCTAssertNil(settings.breakImagePath)
+        XCTAssertNil(settings.breakImageName)
         XCTAssertTrue(settings.longBreakEnabled)
         XCTAssertTrue(settings.pauseForMeetings)
         XCTAssertTrue(settings.pauseForVideo)
@@ -81,6 +86,42 @@ final class AppSettingsTests: XCTestCase {
         let encoded = try JSONEncoder().encode(settings)
         XCTAssertEqual(try JSONDecoder().decode(AppSettings.self, from: encoded), settings)
         XCTAssertFalse(String(decoding: encoded, as: UTF8.self).contains("headsUpSeconds"))
+    }
+
+    func testPictureThemeAndImageDetailsRoundTrip() throws {
+        var settings = AppSettings()
+        settings.breakTheme = "picture"
+        settings.breakImagePath = "/Users/example/Library/Application Support/OpenAway/BreakImage.jpg"
+        settings.breakImageName = "Mountain.jpg"
+        settings.normalize()
+        XCTAssertEqual(settings.breakTheme, "picture")
+        let encoded = try JSONEncoder().encode(settings)
+        XCTAssertEqual(try JSONDecoder().decode(AppSettings.self, from: encoded), settings)
+    }
+
+    func testWallpaperThemeRoundTrips() throws {
+        var settings = AppSettings()
+        settings.breakTheme = "wallpaper"
+        settings.normalize()
+        XCTAssertEqual(settings.breakTheme, "wallpaper")
+        let encoded = try JSONEncoder().encode(settings)
+        XCTAssertEqual(try JSONDecoder().decode(AppSettings.self, from: encoded), settings)
+    }
+
+    func testRemovedBuiltInThemesInOlderSettingsMigrateToBlur() throws {
+        for theme in ["grove", "ocean", "dusk"] {
+            let data = try JSONSerialization.data(withJSONObject: ["breakTheme": theme])
+            let settings = try JSONDecoder().decode(AppSettings.self, from: data)
+            XCTAssertEqual(settings.breakTheme, "blur")
+            XCTAssertNil(settings.breakImagePath)
+            XCTAssertNil(settings.breakImageName)
+        }
+    }
+
+    func testInvalidDecodedThemeFallsBackToBlur() throws {
+        let data = Data(#"{"breakTheme":"unknown"}"#.utf8)
+        let settings = try JSONDecoder().decode(AppSettings.self, from: data)
+        XCTAssertEqual(settings.breakTheme, "blur")
     }
 
     func testEngineNormalizesSettingsAtEntry() {
