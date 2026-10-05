@@ -86,10 +86,11 @@ jobs:
       contents: write
     env:
       RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
-      GH_TOKEN: ${{ github.token }}
       GH_REPO: ${{ github.repository }}
     steps:
-      - name: Package and verify DMG from published app
+      - name: Verify and download published app
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           if [[ "${{ inputs.update_cask_only || false }}" == true ]]; then
@@ -103,14 +104,7 @@ jobs:
             exit 1
           fi
           WORK_DIR=$(mktemp -d)
-          MOUNTED=false
-          cleanup() {
-            if [[ "$MOUNTED" == true ]]; then
-              hdiutil detach "$WORK_DIR/mount" || return
-            fi
-            rm -rf "$WORK_DIR"
-          }
-          trap cleanup EXIT
+          echo "DMG_WORK_DIR=$WORK_DIR" >> "$GITHUB_ENV"
           cd "$WORK_DIR"
           gh release download "$RELEASE_TAG" --pattern 'OpenAway-macos.zip' --pattern 'OpenAway-macos.zip.sha256'
           [[ "$(wc -l < OpenAway-macos.zip.sha256)" -eq 1 ]]
@@ -121,6 +115,18 @@ jobs:
           APP_VERSION=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' OpenAway.app/Contents/Info.plist)
           [[ "$RELEASE_TAG" == "v$APP_VERSION" ]]
           codesign --verify --deep --strict OpenAway.app
+      - name: Package and verify DMG
+        run: |
+          set -euo pipefail
+          WORK_DIR="$DMG_WORK_DIR"
+          MOUNTED=false
+          cleanup_mount() {
+            if [[ "$MOUNTED" == true ]]; then
+              hdiutil detach "$WORK_DIR/mount"
+            fi
+          }
+          trap cleanup_mount EXIT
+          cd "$WORK_DIR"
           npx --yes create-dmg@8.1.0 --no-code-sign --no-version-in-filename "$WORK_DIR/OpenAway.app" "$WORK_DIR"
           mv OpenAway.dmg OpenAway-macos.dmg
           hdiutil verify OpenAway-macos.dmg
@@ -135,7 +141,19 @@ jobs:
           MOUNTED=false
           shasum -a 256 OpenAway-macos.dmg > OpenAway-macos.dmg.sha256
           shasum -a 256 -c OpenAway-macos.dmg.sha256
-          gh release upload "$RELEASE_TAG" OpenAway-macos.dmg OpenAway-macos.dmg.sha256
+      - name: Publish DMG assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "$RELEASE_TAG" "$DMG_WORK_DIR/OpenAway-macos.dmg" "$DMG_WORK_DIR/OpenAway-macos.dmg.sha256"
+      - name: Clean packaging files
+        if: always()
+        run: |
+          if [[ -n "${DMG_WORK_DIR:-}" ]]; then
+            if [[ -d "$DMG_WORK_DIR/mount/OpenAway.app" ]]; then
+              hdiutil detach "$DMG_WORK_DIR/mount"
+            fi
+            rm -rf "$DMG_WORK_DIR"
+          fi
 
   update-cask:
     needs: release
