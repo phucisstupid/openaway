@@ -134,7 +134,8 @@ jobs:
           hdiutil attach OpenAway-macos.dmg -readonly -nobrowse -mountpoint "$WORK_DIR/mount"
           MOUNTED=true
           codesign --verify --deep --strict "$WORK_DIR/mount/OpenAway.app"
-          lipo "$WORK_DIR/mount/OpenAway.app/Contents/MacOS/OpenAway" -verify_arch arm64 x86_64
+          lipo "$WORK_DIR/mount/OpenAway.app/Contents/MacOS/OpenAway" -verify_arch arm64
+          lipo "$WORK_DIR/mount/OpenAway.app/Contents/MacOS/OpenAway" -verify_arch x86_64
           diff -qr OpenAway.app "$WORK_DIR/mount/OpenAway.app"
           [[ -L "$WORK_DIR/mount/Applications" && "$(readlink "$WORK_DIR/mount/Applications")" == /Applications ]]
           hdiutil detach "$WORK_DIR/mount"
