@@ -104,7 +104,8 @@ jobs:
           fi
           ASSET_DIR=$(mktemp -d)
           trap 'rm -rf "$ASSET_DIR"' EXIT
-          gh release download "$RELEASE_TAG" --pattern 'OpenAway-macos.zip*' --dir "$ASSET_DIR"
+          gh release download "$RELEASE_TAG" --pattern 'OpenAway-macos.zip' --pattern 'OpenAway-macos.zip.sha256' --dir "$ASSET_DIR"
+          [[ "$(wc -l < "$ASSET_DIR/OpenAway-macos.zip.sha256")" -eq 1 ]]
           read -r CHECKSUM ASSET_NAME < "$ASSET_DIR/OpenAway-macos.zip.sha256"
           [[ "$CHECKSUM" =~ ^[a-f0-9]{64}$ && "$ASSET_NAME" == "OpenAway-macos.zip" ]]
           [[ "$(sha256sum "$ASSET_DIR/OpenAway-macos.zip" | cut -d ' ' -f 1)" == "$CHECKSUM" ]]
