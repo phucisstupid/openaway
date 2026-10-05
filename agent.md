@@ -31,6 +31,8 @@ its test bodies come from the XCTest source files.
   toggles, intervals, and previews.
   Visual preferences belong in Appearance and shortcut help in Keyboard Shortcuts.
   Reset to Defaults remains last in General, resets all preferences, and preserves history.
+  About stays compact with app identity, bundle version, and the GitHub link;
+  confirmed history deletion belongs in Activity.
 - Use native sidebar selection, spacing, window controls, and grouped forms. Keep
   all General and Wellness Reminders sections and dependent controls visible,
   disabling inactive fields.
@@ -80,6 +82,14 @@ after a version tag is pushed, or by manually dispatching it for an existing tag
 For releases, keep the app version, tag, asset filename, and cask version/checksum
 consistent. Verify the ZIP after extracting it into a clean temporary directory;
 Finder metadata on the app copied into a synced folder can affect signature checks.
+
+1. Update `CFBundleShortVersionString` in `Resources/Info.plist`, verify, commit,
+   and push the changes.
+2. Push an annotated `v<version>` tag to trigger the release workflow. Tag notes
+   become the release notes. Wait for the workflow to publish both assets.
+3. Update `version` and `sha256` in `Casks/openaway.rb` using the published
+   `OpenAway-macos.zip.sha256`, then commit and push the cask update. Never use
+   a local build's checksum for a workflow-built release.
 
 Update README and architecture notes when behavior changes. Use original artwork,
 preserve the MIT license, and describe OpenAway as an independent project.

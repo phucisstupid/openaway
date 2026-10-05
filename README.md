@@ -15,6 +15,13 @@ Requires **macOS 13 or later**.
 2. Extract it and move **OpenAway.app** to **Applications**.
 3. Open the app and configure your routine from the menu bar.
 
+Or install with Homebrew:
+
+```sh
+brew tap phucisstupid/openaway https://github.com/phucisstupid/openaway
+brew install --cask phucisstupid/openaway/openaway
+```
+
 Release builds are ad-hoc signed, not Developer ID signed or notarized. macOS may
 block the first launch; after reviewing the download, use **System Settings >
 Privacy & Security > Open Anyway** if offered.
