@@ -2,8 +2,7 @@
 
 # OpenAway
 
-A native, open-source break reminder for macOS. Rest your eyes and reset
-your posture without interupting your workflow.
+A native, open-source break reminder for macOS.
 
 Built with SwiftUI and AppKit. No accounts, analytics, or external dependencies.
 
