@@ -184,7 +184,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
                 panel.animator().alphaValue = 0
                 if !reduceMotion { panel.animator().setFrameOrigin(NSPoint(x: panel.frame.minX, y: panel.frame.minY + 10)) }
             } completionHandler: { [weak self, weak panel] in
-                Task { @MainActor in
+                Task { @MainActor [weak self, weak panel] in
                     guard self?.reminderAnimation == animationID else { return }
                     panel?.orderOut(nil)
                 }
@@ -341,20 +341,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     private func installObservers() {
         let center = NSWorkspace.shared.notificationCenter
         workspaceObservers.append(center.addObserver(forName: NSWorkspace.didActivateApplicationNotification, object: nil, queue: .main) { [weak self] _ in
-            Task { @MainActor in self?.model.activeApplicationChanged() }
+            Task { @MainActor [weak self] in self?.model.activeApplicationChanged() }
         })
         for (name, asleep) in [(NSWorkspace.willSleepNotification, true), (NSWorkspace.didWakeNotification, false)] {
             workspaceObservers.append(center.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
-                Task { @MainActor in self?.model.setSleeping(asleep) }
+                Task { @MainActor [weak self] in self?.model.setSleeping(asleep) }
             })
         }
         for (name, asleep) in [(NSWorkspace.screensDidSleepNotification, true), (NSWorkspace.screensDidWakeNotification, false)] {
             workspaceObservers.append(center.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
-                Task { @MainActor in self?.model.setDisplaySleeping(asleep) }
+                Task { @MainActor [weak self] in self?.model.setDisplaySleeping(asleep) }
             })
         }
         localObservers.append(NotificationCenter.default.addObserver(forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main) { [weak self] _ in
-            Task { @MainActor in
+            Task { @MainActor [weak self] in
                 guard let self else { return }
                 self.synchronizeBreakWindows()
                 if let panel = self.reminderPanel, panel.isVisible, let origin = self.reminderOrigin(for: panel) {
@@ -364,7 +364,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         })
         for (name, locked) in [("com.apple.screenIsLocked", true), ("com.apple.screenIsUnlocked", false)] {
             distributedObservers.append(DistributedNotificationCenter.default().addObserver(forName: Notification.Name(name), object: nil, queue: .main) { [weak self] _ in
-                Task { @MainActor in self?.model.setLocked(locked) }
+                Task { @MainActor [weak self] in self?.model.setLocked(locked) }
             })
         }
     }
