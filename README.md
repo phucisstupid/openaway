@@ -15,9 +15,11 @@ Requires **macOS 13 or later**.
 2. Open the disk image and drag **OpenAway** to **Applications**.
 3. Open the app and configure your routine from the menu bar.
 
-The ZIP is also available; extract it and move **OpenAway.app** to **Applications**.
+The universal ZIP is also available; extract it and move **OpenAway.app** to
+**Applications**. The DMG and universal ZIP support Apple Silicon and Intel Macs.
+New releases also include **OpenAway-macos-arm64.zip** for Apple Silicon.
 
-Or install with Homebrew:
+Or install with Homebrew, which uses the Apple Silicon ZIP for new releases:
 
 ```sh
 brew tap phucisstupid/openaway https://github.com/phucisstupid/openaway
@@ -33,7 +35,7 @@ Privacy & Security > Open Anyway** if offered.
 - Customizable eye breaks and longer breaks, with a warning that waits for a pause.
 - Automatic pauses for idle time, meetings, video playback, and selected apps.
 - Separate blink and posture reminders that do not take keyboard focus.
-- Break screens across your displays, using desktop blur, wallpaper blur, or your own image.
+- Break screens across your displays, using desktop blur or your own image, with optional adjustable blur.
 - Native settings, menu bar controls, and local activity history.
 
 Preferences and history stay on your Mac. OpenAway does not capture screen,

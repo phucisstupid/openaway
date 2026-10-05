@@ -223,7 +223,7 @@ final class AppModel: ObservableObject {
         var updated = settings
         updated.breakImagePath = destination.path
         updated.breakImageName = url.lastPathComponent
-        updated.breakTheme = "picture"
+        updated.breakTheme = "blurImage"
         settings = updated
         breakImage = image
         breakImageError = nil
@@ -233,7 +233,7 @@ final class AppModel: ObservableObject {
         var updated = settings
         updated.breakImagePath = nil
         updated.breakImageName = nil
-        if updated.breakTheme == "picture" { updated.breakTheme = "blur" }
+        if updated.breakTheme == "blurImage" { updated.breakTheme = "blur" }
         settings = updated
         breakImageError = nil
     }
@@ -438,9 +438,14 @@ final class AppModel: ObservableObject {
             let storage = directory.appendingPathComponent("Imported")
             let model = AppModel(defaults: defaults, persists: true, breakImageDirectory: storage)
             try model.importBreakImage(from: source)
-            guard model.settings.breakTheme == "picture", model.breakImage != nil,
+            guard model.settings.breakTheme == "blurImage", model.breakImage != nil,
                   model.settings.breakImageName == "Picture.png", let path = model.settings.breakImagePath,
-                  try Data(contentsOf: URL(fileURLWithPath: path)) == data else { return false }
+                  try Data(contentsOf: URL(fileURLWithPath: path)) == data,
+                  presentationMatches(model) else { return false }
+            model.settings.breakTheme = "blurImage"
+            model.settings.breakImageBlurRadius = 40
+            try model.importBreakImage(from: source)
+            guard model.settings.breakTheme == "blurImage", model.settings.breakImageBlurRadius == 40 else { return false }
             let saved = model.settings
             let invalid = directory.appendingPathComponent("Invalid.png")
             try Data("not an image".utf8).write(to: invalid)
@@ -449,6 +454,7 @@ final class AppModel: ObservableObject {
             try FileManager.default.removeItem(at: source)
             let restored = AppModel(defaults: defaults, persists: true, breakImageDirectory: storage)
             guard restored.breakImage != nil, restored.settings.breakImagePath == path,
+                  restored.settings.breakTheme == "blurImage", restored.settings.breakImageBlurRadius == 40,
                   presentationMatches(restored) else { return false }
             restored.removeBreakImage()
             guard restored.settings.breakTheme == "blur", restored.breakImage == nil,

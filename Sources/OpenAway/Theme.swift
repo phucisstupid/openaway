@@ -138,20 +138,20 @@ func timeString(_ seconds: Int) -> String {
 
 struct BreakBackgroundView: View {
     @ObservedObject var model: AppModel
-    var screen: NSScreen? = nil
 
     var body: some View {
+        let radius = CGFloat(model.settings.breakImageBlurRadius)
         Group {
-            if model.settings.breakTheme == "picture", let image = model.breakImage {
+            if model.settings.breakTheme == "blurImage", let image = model.breakImage {
                 GeometryReader { geometry in
                     Image(nsImage: image).resizable().scaledToFill()
-                        .frame(width: geometry.size.width, height: geometry.size.height).clipped()
-                        .overlay {
-                            LinearGradient(colors: [.black.opacity(0.45), .black.opacity(0.65)], startPoint: .top, endPoint: .bottom)
-                        }
+                        .frame(width: geometry.size.width + radius * 3, height: geometry.size.height + radius * 3)
+                        .blur(radius: radius, opaque: true)
+                        .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
+                }.clipped()
+                .overlay {
+                    LinearGradient(colors: [.black.opacity(0.45), .black.opacity(0.65)], startPoint: .top, endPoint: .bottom)
                 }
-            } else if model.settings.breakTheme == "wallpaper" {
-                WallpaperBlurView(screen: screen)
             } else {
                 DesktopBlurView()
                     .overlay {
@@ -174,41 +174,4 @@ struct DesktopBlurView: NSViewRepresentable {
     }
 
     func updateNSView(_ view: NSVisualEffectView, context: Context) {}
-}
-
-struct WallpaperBlurView: View {
-    var screen: NSScreen? = nil
-    @ViewState private var image: NSImage?
-
-    var body: some View {
-        Group {
-            if let image {
-                GeometryReader { geometry in
-                    Image(nsImage: image).resizable().scaledToFill()
-                        .frame(width: geometry.size.width + 96, height: geometry.size.height + 96)
-                        .blur(radius: 32, opaque: true)
-                        .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
-                }.clipped()
-            } else {
-                DesktopBlurView()
-            }
-        }
-        .overlay {
-            LinearGradient(colors: [.black.opacity(0.45), .black.opacity(0.65)], startPoint: .top, endPoint: .bottom)
-        }
-        .onAppear(perform: loadWallpaper)
-        .onReceive(NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.activeSpaceDidChangeNotification)) { _ in
-            loadWallpaper()
-        }
-    }
-
-    private func loadWallpaper() {
-        guard let screen = screen ?? NSScreen.main,
-              let url = NSWorkspace.shared.desktopImageURL(for: screen),
-              let wallpaper = NSImage(contentsOf: url), wallpaper.isValid else {
-            image = nil
-            return
-        }
-        image = wallpaper
-    }
 }

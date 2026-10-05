@@ -38,8 +38,12 @@ its test bodies come from the XCTest source files.
   disabling inactive fields.
   Do not add a repeated section toolbar or custom selection highlighting.
 - Keep macOS 13 fallbacks for newer APIs. Use system glass effects on supported systems.
-- Keep only Blur Desktop, Blur Wallpaper, and User Image backgrounds. Desktop blur
-  is the default; wallpaper blur uses each display's public wallpaper URL, not capture.
+- Keep only Blur Desktop and Image backgrounds. Desktop blur is the default.
+  Image uses the imported image and a saved blur amount from 0–80 points,
+  defaulting to 32, adjusted live with a native slider; zero keeps the image sharp.
+  Legacy wallpaper preferences migrate to Image; User Image migrates with zero blur.
+  Missing images fall back to desktop blur; do not read system wallpaper or capture
+  the screen.
 - Scheduled breaks show a full five-second warning, then wait for five seconds
   without typing or mouse activity. A held mouse button counts as activity.
 - Reminder panels must not take keyboard focus. Blink/posture overlays fade after
@@ -87,12 +91,17 @@ Finder metadata on the app copied into a synced folder can affect signature chec
 1. Update `CFBundleShortVersionString` in `Resources/Info.plist`, verify, commit,
    and push the changes.
 2. Push an annotated `v<version>` tag to trigger the release workflow. Tag notes
-   become the release notes. Wait for the workflow to publish the ZIP, DMG,
-   and their SHA256 files.
-3. The workflow downloads the published ZIP/checksum, verifies them, and commits
-   the cask's `version` and `sha256` to the default branch as the Actions bot.
+   become the release notes. On `macos-26`, the workflow uses the existing build
+   script to produce and verify `OpenAway-macos-arm64.zip`, then builds the
+   universal ZIP. Wait for both ZIPs, the universal DMG, and their SHA256 files.
+3. The workflow downloads the published arm64 ZIP/checksum, verifies them, and
+   commits the cask's `version`, `sha256`, arm64 asset URL, and Apple Silicon
+   architecture requirement together to the default branch as the Actions bot.
    It skips older releases and unchanged casks. Never use a local build's checksum
    for a workflow-built release.
+
+Keep the current cask URL and checksum valid until an arm64 release is published;
+the updater migrates the cask to Apple Silicon only when those assets exist.
 
 The separate `create-dmg` job verifies the published ZIP, packages the same
 universal app using `sindresorhus/create-dmg@8.1.0`, and checks the mounted app's
@@ -102,9 +111,10 @@ the existing tag and `dmg_only` enabled to add a DMG without rebuilding the app
 or bumping its version.
 
 If publishing succeeds but the cask update fails, dispatch `Release` with the
-existing tag and `update_cask_only` enabled. This does not rebuild or replace the
-release. Branch protection must permit the bot's normal push; concurrent branch
-changes cause a visible failure rather than a force push. Verify updater changes
+existing tag and `update_cask_only` enabled. This requires that release's arm64
+ZIP and checksum and does not rebuild or replace the release. Branch protection
+must permit the bot's normal push; concurrent branch changes cause a visible
+failure rather than a force push. Verify updater changes
 with `ruby scripts/test-cask.rb`.
 
 Update README and architecture notes when behavior changes. Use original artwork,

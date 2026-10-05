@@ -3,14 +3,13 @@ import OpenAwayCore
 
 struct BreakOverlayView: View {
     @ObservedObject var model: AppModel
-    var screen: NSScreen? = nil
     private var seconds: Int { model.isPreviewing ? model.settings.breakDurationSeconds : model.engine.remainingSeconds }
     private var longBreak: Bool { !model.isPreviewing && model.engine.currentBreakKind == .long }
     private var textColor: Color { .white }
     var body: some View {
         GeometryReader { geometry in
             ZStack {
-                BreakBackgroundView(model: model, screen: screen)
+                BreakBackgroundView(model: model)
 
                 VStack(spacing: 28) {
                     Text(longBreak ? "Time to stretch." : model.settings.breakMessage)

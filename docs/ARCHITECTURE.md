@@ -59,9 +59,10 @@ sit in the center, with glass actions along the bottom. The top-center reminder 
 the foreground application's typing focus throughout the warning and wait.
 
 Desktop blur is the default background; removed landscape themes migrate to it.
-Wallpaper blur reads each display's image through `NSWorkspace.desktopImageURL(for:)`
-on presentation and Space changes, then fills, blurs, and dims it. No screen capture
-is used. Unavailable or unsupported wallpapers fall back to desktop blur.
+Legacy wallpaper preferences migrate to Image. Legacy User Image preferences
+migrate to Image with zero blur to preserve their sharp appearance. Image applies
+a saved blur radius from 0–80 points, defaulting to 32; zero keeps the image sharp.
+It does not read system wallpaper or capture the screen.
 The native image picker validates images with AppKit and atomically saves a local
 copy in the app's Application Support directory. The settings store its path and
 original name, and `AppModel` caches the decoded image. `BreakBackgroundView` fills
@@ -84,7 +85,9 @@ previews in its own grouped form. Dependent controls stay visible and are disabl
 when their feature is off.
 Numeric rows use native `LabeledContent` for label alignment.
 Appearance contains native segmented controls for Mode (System/Light/Dark) and
-Background (Blur Desktop/Blur Wallpaper/User Image), plus the message and preview.
+Background (Blur Desktop/Image), plus the message and preview.
+Image shows choose/change image controls and a native slider that updates the blur
+live and saves the selected amount.
 Keyboard Shortcuts lists the app's
 commands in their own grouped forms. About shows the app identity, version from
 the bundle, a short description, and a native link to the OpenAway GitHub repository.
@@ -121,18 +124,24 @@ login-item approval still need manual validation on supported macOS versions.
 
 ## Releases
 
-`release.yml` verifies the version tag, tests and builds the universal app, and
-publishes its ZIP and SHA256. A separate `create-dmg` job downloads and verifies
-that ZIP, then uses pinned `sindresorhus/create-dmg@8.1.0` to package the same
-ad-hoc signed app in `OpenAway-macos.dmg`. It verifies the mounted signature,
+`release.yml` verifies the version tag and tests the app on `macos-26`. It uses
+`./scripts/build-app.sh` for a native arm64 build, verifies its architecture and
+signature, and names the archive `OpenAway-macos-arm64.zip`. It then runs the
+same script with `--universal` and publishes both ZIPs with their SHA256 files.
+A separate `create-dmg` job downloads and verifies the universal ZIP, then uses
+pinned `sindresorhus/create-dmg@8.1.0` to package the same ad-hoc signed app in
+`OpenAway-macos.dmg`. It verifies the mounted signature,
 arm64/x86_64 architectures, and Applications link before uploading the DMG and
 its SHA256 without overwriting existing assets. A `dmg_only` manual dispatch adds
 these assets to an existing release without rebuilding or replacing the ZIP.
 Local builds continue to produce only the app and ZIP.
 
 A dependent cask job checks out the default branch,
-downloads and verifies the published assets, and commits only the cask version
-and checksum using the Actions token. It serializes cask updates, skips outdated
+downloads and verifies the published arm64 ZIP and checksum, and commits the
+cask version, checksum, arm64 asset URL, and Apple Silicon architecture requirement
+together using the Actions token. The existing cask stays valid until the first
+arm64 release supplies these assets. It serializes cask updates, skips outdated
 releases and unchanged files, and never force-pushes. A cask-only manual dispatch
-can recover a failed update without changing an existing release. The updater's
-focused Ruby checks run before every cask synchronization.
+requires the arm64 assets and can recover a failed update without changing an
+existing release. The updater's focused Ruby checks run before every cask
+synchronization.

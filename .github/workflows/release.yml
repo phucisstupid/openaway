@@ -45,12 +45,31 @@ jobs:
       - name: Verify release version
         run: |
           set -euo pipefail
-          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || exit 1
           VERSION=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' Resources/Info.plist)
-          [[ "$RELEASE_TAG" == "v$VERSION" ]]
-          [[ "$(git rev-parse "refs/tags/$RELEASE_TAG^{commit}")" == "$(git rev-parse HEAD)" ]]
+          [[ "$RELEASE_TAG" == "v$VERSION" ]] || exit 1
+          [[ "$(git rev-parse "refs/tags/$RELEASE_TAG^{commit}")" == "$(git rev-parse HEAD)" ]] || exit 1
       - name: Test timer behavior
         run: swift test
+      - name: Build arm64 app
+        run: |
+          set -euo pipefail
+          [[ "$(uname -m)" == arm64 ]] || exit 1
+          ./scripts/build-app.sh
+          mv dist/OpenAway-macos.zip dist/OpenAway-macos-arm64.zip
+      - name: Verify arm64 archive and checksum
+        run: |
+          set -euo pipefail
+          VERIFY_DIR=$(mktemp -d)
+          trap 'rm -rf "$VERIFY_DIR"' EXIT
+          ditto -x -k dist/OpenAway-macos-arm64.zip "$VERIFY_DIR"
+          APP_VERSION=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$VERIFY_DIR/OpenAway.app/Contents/Info.plist")
+          [[ "$RELEASE_TAG" == "v$APP_VERSION" ]] || exit 1
+          codesign --verify --deep --strict "$VERIFY_DIR/OpenAway.app"
+          [[ "$(lipo -archs "$VERIFY_DIR/OpenAway.app/Contents/MacOS/OpenAway")" == arm64 ]] || exit 1
+          cd dist
+          shasum -a 256 OpenAway-macos-arm64.zip > OpenAway-macos-arm64.zip.sha256
+          shasum -a 256 -c OpenAway-macos-arm64.zip.sha256
       - name: Build universal app
         run: ./scripts/build-app.sh --universal
       - name: Verify release archive and checksum
@@ -72,8 +91,9 @@ jobs:
         run: |
           RELEASE_NOTES=$(git for-each-ref --format='%(contents)' "refs/tags/$RELEASE_TAG")
           RELEASE_NOTES+=$'\n\n'
-          RELEASE_NOTES+="Universal app for Apple Silicon and Intel Macs running macOS 13 or later. Ad-hoc signed, not notarized. If macOS blocks the app, use System Settings > Privacy & Security > Open Anyway."
+          RELEASE_NOTES+="Apple Silicon ZIP: OpenAway-macos-arm64.zip. Universal ZIP: OpenAway-macos.zip, for Apple Silicon and Intel. Requires macOS 13 or later. Ad-hoc signed, not notarized. If macOS blocks the app, use System Settings > Privacy & Security > Open Anyway."
           gh release create "$RELEASE_TAG" \
+            dist/OpenAway-macos-arm64.zip dist/OpenAway-macos-arm64.zip.sha256 \
             dist/OpenAway-macos.zip dist/OpenAway-macos.zip.sha256 \
             --verify-tag --title "OpenAway ${RELEASE_TAG#v}" --notes "$RELEASE_NOTES"
 
@@ -97,7 +117,7 @@ jobs:
             echo "::error::Select only one recovery option: dmg_only or update_cask_only."
             exit 1
           fi
-          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || exit 1
           EXISTING_DMG=$(gh release view "$RELEASE_TAG" --json assets --jq 'any(.assets[]; .name == "OpenAway-macos.dmg" or .name == "OpenAway-macos.dmg.sha256")')
           if [[ "$EXISTING_DMG" == true ]]; then
             echo "::error::DMG assets already exist; refusing to overwrite published files."
@@ -107,13 +127,13 @@ jobs:
           echo "DMG_WORK_DIR=$WORK_DIR" >> "$GITHUB_ENV"
           cd "$WORK_DIR"
           gh release download "$RELEASE_TAG" --pattern 'OpenAway-macos.zip' --pattern 'OpenAway-macos.zip.sha256'
-          [[ "$(wc -l < OpenAway-macos.zip.sha256)" -eq 1 ]]
+          [[ "$(wc -l < OpenAway-macos.zip.sha256)" -eq 1 ]] || exit 1
           read -r CHECKSUM ASSET_NAME < OpenAway-macos.zip.sha256
-          [[ "$CHECKSUM" =~ ^[a-f0-9]{64}$ && "$ASSET_NAME" == "OpenAway-macos.zip" ]]
+          [[ "$CHECKSUM" =~ ^[a-f0-9]{64}$ && "$ASSET_NAME" == "OpenAway-macos.zip" ]] || exit 1
           shasum -a 256 -c OpenAway-macos.zip.sha256
           ditto -x -k OpenAway-macos.zip "$WORK_DIR"
           APP_VERSION=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' OpenAway.app/Contents/Info.plist)
-          [[ "$RELEASE_TAG" == "v$APP_VERSION" ]]
+          [[ "$RELEASE_TAG" == "v$APP_VERSION" ]] || exit 1
           codesign --verify --deep --strict OpenAway.app
       - name: Package and verify DMG
         run: |
@@ -137,7 +157,7 @@ jobs:
           lipo "$WORK_DIR/mount/OpenAway.app/Contents/MacOS/OpenAway" -verify_arch arm64
           lipo "$WORK_DIR/mount/OpenAway.app/Contents/MacOS/OpenAway" -verify_arch x86_64
           diff -qr OpenAway.app "$WORK_DIR/mount/OpenAway.app"
-          [[ -L "$WORK_DIR/mount/Applications" && "$(readlink "$WORK_DIR/mount/Applications")" == /Applications ]]
+          [[ -L "$WORK_DIR/mount/Applications" && "$(readlink "$WORK_DIR/mount/Applications")" == /Applications ]] || exit 1
           hdiutil detach "$WORK_DIR/mount"
           MOUNTED=false
           shasum -a 256 OpenAway-macos.dmg > OpenAway-macos.dmg.sha256
@@ -180,7 +200,7 @@ jobs:
       - name: Sync cask with published release
         run: |
           set -euo pipefail
-          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || exit 1
           LATEST_TAG=$(gh release view --json tagName --jq '.tagName')
           if [[ "$RELEASE_TAG" != "$LATEST_TAG" ]]; then
             echo "Skipping $RELEASE_TAG; latest stable release is $LATEST_TAG"
@@ -188,11 +208,11 @@ jobs:
           fi
           ASSET_DIR=$(mktemp -d)
           trap 'rm -rf "$ASSET_DIR"' EXIT
-          gh release download "$RELEASE_TAG" --pattern 'OpenAway-macos.zip' --pattern 'OpenAway-macos.zip.sha256' --dir "$ASSET_DIR"
-          [[ "$(wc -l < "$ASSET_DIR/OpenAway-macos.zip.sha256")" -eq 1 ]]
-          read -r CHECKSUM ASSET_NAME < "$ASSET_DIR/OpenAway-macos.zip.sha256"
-          [[ "$CHECKSUM" =~ ^[a-f0-9]{64}$ && "$ASSET_NAME" == "OpenAway-macos.zip" ]]
-          [[ "$(sha256sum "$ASSET_DIR/OpenAway-macos.zip" | cut -d ' ' -f 1)" == "$CHECKSUM" ]]
+          gh release download "$RELEASE_TAG" --pattern 'OpenAway-macos-arm64.zip' --pattern 'OpenAway-macos-arm64.zip.sha256' --dir "$ASSET_DIR"
+          [[ "$(wc -l < "$ASSET_DIR/OpenAway-macos-arm64.zip.sha256")" -eq 1 ]] || exit 1
+          read -r CHECKSUM ASSET_NAME < "$ASSET_DIR/OpenAway-macos-arm64.zip.sha256"
+          [[ "$CHECKSUM" =~ ^[a-f0-9]{64}$ && "$ASSET_NAME" == "OpenAway-macos-arm64.zip" ]] || exit 1
+          [[ "$(sha256sum "$ASSET_DIR/OpenAway-macos-arm64.zip" | cut -d ' ' -f 1)" == "$CHECKSUM" ]] || exit 1
           ruby scripts/update-cask.rb "${RELEASE_TAG#v}" "$CHECKSUM" Casks/openaway.rb
           ruby -c Casks/openaway.rb
       - name: Commit cask update

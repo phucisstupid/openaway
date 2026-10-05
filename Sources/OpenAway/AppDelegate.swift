@@ -143,7 +143,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
             window.hasShadow = false
             window.backgroundColor = .clear
             window.isReleasedWhenClosed = false
-            window.contentView = NSHostingView(rootView: BreakOverlayView(model: model, screen: screen))
+            window.contentView = NSHostingView(rootView: BreakOverlayView(model: model))
             window.onEscape = { [weak self] isRepeat in self?.model.handleEscape(isRepeat: isRepeat) }
             window.setFrame(screen.frame, display: true)
             breakWindows.append(window)
@@ -379,6 +379,45 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     @objc private func snoozeFor(_ sender: NSMenuItem) { model.snooze(minutes: sender.tag) }
     @objc private func quit() { NSApp.terminate(nil) }
 
+    private func imageBlurSmokeCheck() -> Bool {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("OpenAway-image-blur-test-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: directory) }
+        guard let bitmap = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: 32, pixelsHigh: 32,
+                                            bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true,
+                                            isPlanar: false, colorSpaceName: .calibratedRGB, bytesPerRow: 0, bitsPerPixel: 0) else { return false }
+        let black = NSColor(calibratedRed: 0, green: 0, blue: 0, alpha: 1)
+        let white = NSColor(calibratedRed: 1, green: 1, blue: 1, alpha: 1)
+        for x in 0..<32 {
+            for y in 0..<32 { bitmap.setColor(x < 16 ? black : white, atX: x, y: y) }
+        }
+        guard let data = bitmap.representation(using: .png, properties: [:]) else { return false }
+        do {
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            let source = directory.appendingPathComponent("Split.png")
+            try data.write(to: source)
+            let model = AppModel(persists: false, breakImageDirectory: directory.appendingPathComponent("Imported"))
+            model.settings.breakTheme = "blurImage"
+            try model.importBreakImage(from: source)
+            func contrast() -> CGFloat? {
+                let renderer = ImageRenderer(content: BreakBackgroundView(model: model).frame(width: 120, height: 80))
+                renderer.scale = 1
+                guard let image = renderer.cgImage else { return nil }
+                let pixels = NSBitmapImageRep(cgImage: image)
+                guard let left = pixels.colorAt(x: 50, y: 40), let right = pixels.colorAt(x: 70, y: 40) else { return nil }
+                return abs(right.redComponent - left.redComponent)
+            }
+            model.settings.breakImageBlurRadius = 0
+            guard let sharp = contrast(), sharp > 0.3 else { return false }
+            model.settings.breakImageBlurRadius = 40
+            guard let blurred = contrast(), blurred < sharp * 0.6 else { return false }
+            model.settings.breakImageBlurRadius = 0
+            guard let unblurred = contrast() else { return false }
+            return abs(unblurred - sharp) < 0.01
+        } catch {
+            return false
+        }
+    }
+
     private func runSmokeTest() {
         var failures: [String] = []
         func check(_ value: Bool, _ label: String) { if !value { failures.append(label) } }
@@ -419,6 +458,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
             return Int(pixels[center]) > 25 && Int(pixels[center]) > Int(pixels[center + 1]) + 25
                 && Int(pixels[center]) > Int(pixels[center + 2]) + 25
         }, "picture import persists, renders its pixels, rejects invalid images, and resets safely")
+        check(imageBlurSmokeCheck(), "image blur reduces pixel contrast and returns to sharp at zero")
         check(ActivityMonitor.smokeCheck(), "activity metadata matching, disabled state, and unchanged permissions")
         check(AppModel.reminderSmokeCheck(), "overlapping reminders wait until the current overlay ends")
         check(model.countdownSmokeCheck { [self] in

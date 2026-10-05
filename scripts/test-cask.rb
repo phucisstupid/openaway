@@ -28,11 +28,15 @@ def check(name, source, version, sha, expected, success: true)
   end
 end
 
-updated = BASE.sub('  version "1.9.9"', '  version "1.10.0"').sub(OLD_SHA, NEW_SHA)
-check("update only version and checksum", BASE, "1.10.0", NEW_SHA, updated)
+arm64 = BASE.sub("OpenAway-macos.zip", "OpenAway-macos-arm64.zip")
+            .sub("  depends_on macos:", "  depends_on arch: :arm64\n  depends_on macos:")
+updated = arm64.sub('  version "1.9.9"', '  version "1.10.0"').sub(OLD_SHA, NEW_SHA)
+check("migrate URL, architecture, version and checksum together", BASE, "1.10.0", NEW_SHA, updated)
 check("idempotent repeat", updated, "1.10.0", NEW_SHA, updated)
 check("skip downgrade", updated, "1.9.9", OLD_SHA, updated)
-check("repair same-version checksum", BASE, "1.9.9", NEW_SHA, BASE.sub(OLD_SHA, NEW_SHA))
+check("skip downgrade before migration", BASE, "1.9.8", NEW_SHA, BASE)
+check("repair same-version checksum", arm64, "1.9.9", NEW_SHA, arm64.sub(OLD_SHA, NEW_SHA))
+check("migrate same-version release", BASE, "1.9.9", NEW_SHA, arm64.sub(OLD_SHA, NEW_SHA))
 
 [
   ["invalid version", BASE, "1.10.0-beta", NEW_SHA],
@@ -43,9 +47,14 @@ check("repair same-version checksum", BASE, "1.9.9", NEW_SHA, BASE.sub(OLD_SHA, 
   ["ambiguous version", BASE + "  version \"1.9.9\"\n", "1.10.0", NEW_SHA],
   ["ambiguous checksum", BASE + "  sha256 \"#{OLD_SHA}\"\n", "1.10.0", NEW_SHA],
   ["malformed extra version", "  version \"invalid\"\n" + BASE, "1.10.0", NEW_SHA],
-  ["malformed extra checksum", "  sha256 \"invalid\"\n" + BASE, "1.10.0", NEW_SHA]
+  ["malformed extra checksum", "  sha256 \"invalid\"\n" + BASE, "1.10.0", NEW_SHA],
+  ["unsupported archive", BASE.sub("OpenAway-macos.zip", "Other.zip"), "1.10.0", NEW_SHA],
+  ["ambiguous URL", BASE + '  url "https://example.com/Other.zip"' + "\n", "1.10.0", NEW_SHA],
+  ["unsupported architecture", arm64.sub("arch: :arm64", "arch: :intel"), "1.10.0", NEW_SHA],
+  ["ambiguous architecture", arm64 + "  depends_on arch: :arm64\n", "1.10.0", NEW_SHA],
+  ["missing macOS requirement", BASE.sub('  depends_on macos: :ventura', ""), "1.10.0", NEW_SHA]
 ].each do |name, source, version, sha|
   check(name, source, version, sha, source, success: false)
 end
 
-puts "PASS: 13 cask updater checks."
+puts "PASS: 20 cask updater checks."

@@ -14,6 +14,7 @@ final class AppSettingsTests: XCTestCase {
         XCTAssertEqual(settings.breakTheme, "blur")
         XCTAssertNil(settings.breakImagePath)
         XCTAssertNil(settings.breakImageName)
+        XCTAssertEqual(settings.breakImageBlurRadius, 32)
     }
 
     func testNormalizationSafelyBoundsExtremeInputs() {
@@ -59,6 +60,7 @@ final class AppSettingsTests: XCTestCase {
         XCTAssertEqual(settings.breakTheme, "blur")
         XCTAssertNil(settings.breakImagePath)
         XCTAssertNil(settings.breakImageName)
+        XCTAssertEqual(settings.breakImageBlurRadius, 32)
         XCTAssertTrue(settings.longBreakEnabled)
         XCTAssertTrue(settings.pauseForMeetings)
         XCTAssertTrue(settings.pauseForVideo)
@@ -88,24 +90,43 @@ final class AppSettingsTests: XCTestCase {
         XCTAssertFalse(String(decoding: encoded, as: UTF8.self).contains("headsUpSeconds"))
     }
 
-    func testPictureThemeAndImageDetailsRoundTrip() throws {
-        var settings = AppSettings()
-        settings.breakTheme = "picture"
-        settings.breakImagePath = "/Users/example/Library/Application Support/OpenAway/BreakImage.jpg"
-        settings.breakImageName = "Mountain.jpg"
-        settings.normalize()
-        XCTAssertEqual(settings.breakTheme, "picture")
+    func testLegacyPictureThemeKeepsImageAndSharpAppearance() throws {
+        let data = Data(#"{"breakTheme":"picture","breakImagePath":"/Users/example/Library/Application Support/OpenAway/BreakImage.jpg","breakImageName":"Mountain.jpg","breakImageBlurRadius":48}"#.utf8)
+        let settings = try JSONDecoder().decode(AppSettings.self, from: data)
+        XCTAssertEqual(settings.breakTheme, "blurImage")
+        XCTAssertEqual(settings.breakImageBlurRadius, 0)
+        XCTAssertEqual(settings.breakImagePath, "/Users/example/Library/Application Support/OpenAway/BreakImage.jpg")
+        XCTAssertEqual(settings.breakImageName, "Mountain.jpg")
         let encoded = try JSONEncoder().encode(settings)
         XCTAssertEqual(try JSONDecoder().decode(AppSettings.self, from: encoded), settings)
     }
 
-    func testWallpaperThemeRoundTrips() throws {
+    func testBlurImageThemeAndRadiusRoundTrip() throws {
         var settings = AppSettings()
-        settings.breakTheme = "wallpaper"
+        settings.breakTheme = "blurImage"
+        settings.breakImageBlurRadius = 47.5
         settings.normalize()
-        XCTAssertEqual(settings.breakTheme, "wallpaper")
+        XCTAssertEqual(settings.breakTheme, "blurImage")
+        XCTAssertEqual(settings.breakImageBlurRadius, 47.5)
         let encoded = try JSONEncoder().encode(settings)
         XCTAssertEqual(try JSONDecoder().decode(AppSettings.self, from: encoded), settings)
+    }
+
+    func testLegacyWallpaperThemeMigratesToBlurImage() throws {
+        let data = Data(#"{"breakTheme":"wallpaper"}"#.utf8)
+        let settings = try JSONDecoder().decode(AppSettings.self, from: data)
+        XCTAssertEqual(settings.breakTheme, "blurImage")
+        XCTAssertEqual(settings.breakImageBlurRadius, 32)
+    }
+
+    func testImageBlurRadiusClampsAndRejectsNonfiniteValues() {
+        for (input, expected) in [(-1.0, 0.0), (81.0, 80.0), (0.0, 0.0), (80.0, 80.0),
+                                  (Double.nan, 32.0), (Double.infinity, 32.0), (-Double.infinity, 32.0)] {
+            var settings = AppSettings()
+            settings.breakImageBlurRadius = input
+            settings.normalize()
+            XCTAssertEqual(settings.breakImageBlurRadius, expected)
+        }
     }
 
     func testRemovedBuiltInThemesInOlderSettingsMigrateToBlur() throws {

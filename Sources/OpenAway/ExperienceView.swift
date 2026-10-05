@@ -9,13 +9,13 @@ struct ExperienceView: View {
         Group {
             Picker("Background", selection: $model.settings.breakTheme) {
                 Text("Blur Desktop").tag("blur")
-                Text("Blur Wallpaper").tag("wallpaper")
-                Text("User Image").tag("picture")
+                Text("Image").tag("blurImage")
             }.pickerStyle(.segmented)
-            if model.settings.breakTheme == "picture" {
+            if model.settings.breakTheme == "blurImage" {
                 HStack(spacing: 16) {
                     if let image = model.breakImage {
                         Image(nsImage: image).resizable().scaledToFill()
+                            .blur(radius: model.settings.breakImageBlurRadius / 8)
                             .frame(width: 128, height: 72).clipped().cornerRadius(6)
                             .accessibilityHidden(true)
                     }
@@ -34,7 +34,7 @@ struct ExperienceView: View {
                             .help("Remove picture").accessibilityLabel("Remove picture")
                     }
                 }
-                if model.breakImage == nil && model.settings.breakImagePath != nil {
+                if model.breakImage == nil {
                     Text("Desktop blur is used until you choose another picture.")
                         .font(.caption).foregroundStyle(.secondary)
                 }
@@ -42,6 +42,15 @@ struct ExperienceView: View {
                     Text(error).font(.caption).foregroundStyle(.orange)
                         .fixedSize(horizontal: false, vertical: true)
                 }
+                LabeledContent("Blur") {
+                    HStack {
+                        Text("None").font(.caption).foregroundStyle(.secondary)
+                        Slider(value: $model.settings.breakImageBlurRadius, in: 0...80, step: 1)
+                            .accessibilityLabel("Image blur")
+                        Text("Strong").font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+                .disabled(model.breakImage == nil)
             }
             TextField("Break message", text: $messageDraft)
                 .textFieldStyle(.roundedBorder).focused($messageFocused)

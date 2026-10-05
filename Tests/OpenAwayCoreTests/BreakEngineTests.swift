@@ -301,7 +301,7 @@ final class BreakEngineTests: XCTestCase {
         var engine = makeEngine()
         _ = engine.snooze(minutes: 5, now: origin)
         var settings = engine.settings
-        settings.breakTheme = "wallpaper"
+        settings.breakTheme = "blurImage"
         engine.updateSettings(settings, now: time(30))
         XCTAssertEqual(engine.remainingSeconds, 330)
     }
