@@ -2,8 +2,8 @@
 
 # OpenAway
 
-A native, open-source break reminder for macOS. Rest your eyes, blink, and reset
-your posture without leaving your workflow.
+A native, open-source break reminder for macOS. Rest your eyes and reset
+your posture without interupting your workflow.
 
 Built with SwiftUI and AppKit. No accounts, analytics, or external dependencies.
 
@@ -11,31 +11,26 @@ Built with SwiftUI and AppKit. No accounts, analytics, or external dependencies.
 
 Requires **macOS 13 or later**.
 
-1. Download **OpenAway-macos.dmg** from [the latest release](https://github.com/phucisstupid/openaway/releases/latest).
-2. Open the disk image and drag **OpenAway** to **Applications**.
-3. Open the app and configure your routine from the menu bar.
+Download **OpenAway-macos.dmg** from [the latest release](https://github.com/phucisstupid/openaway/releases/latest).
 
 The universal ZIP is also available; extract it and move **OpenAway.app** to
-**Applications**. The DMG and universal ZIP support Apple Silicon and Intel Macs.
-New releases also include **OpenAway-macos-arm64.zip** for Apple Silicon.
+**Applications**. The DMG and universal ZIP support both Apple Silicon and Intel Macs.
 
-Or install with Homebrew, which uses the Apple Silicon ZIP for new releases:
+Or install with Homebrew:
 
 ```sh
-brew tap phucisstupid/openaway https://github.com/phucisstupid/openaway
+brew tap phucisstupid/openaway
 brew install --cask phucisstupid/openaway/openaway
 ```
 
 Release builds are ad-hoc signed, not Developer ID signed or notarized. macOS may
-block the first launch; after reviewing the download, use **System Settings >
-Privacy & Security > Open Anyway** if offered.
+block the first launch; use **System Settings >
+Privacy & Security > Open Anyway**.
 
 ## Features
 
-- Customizable eye breaks and longer breaks, with a warning that waits for a pause.
+- Customizable eye breaks, blink and posture reminders.
 - Automatic pauses for idle time, meetings, video playback, and selected apps.
-- Separate blink and posture reminders that do not take keyboard focus.
-- Break screens across your displays, using desktop blur or your own image, with optional adjustable blur.
 - Native settings, menu bar controls, and local activity history.
 
 Preferences and history stay on your Mac. OpenAway does not capture screen,
@@ -61,5 +56,4 @@ Repository guidance lives in [AGENT.md](AGENT.md).
 
 ## License
 
-[MIT](LICENSE). OpenAway is an independent project, not affiliated with LookAway
-or Mystical Bits.
+[MIT](LICENSE). OpenAway is an independent project, not affiliated with LookAway.
