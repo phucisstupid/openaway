@@ -53,7 +53,7 @@ older systems use native materials.
 
 See [Contributing](CONTRIBUTING.md) for verification and
 [Architecture](docs/ARCHITECTURE.md) for the implementation structure.
-Repository guidance lives in [agent.md](agent.md).
+Repository guidance lives in [AGENT.md](AGENT.md).
 
 ## License
 
