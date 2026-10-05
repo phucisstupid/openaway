@@ -16,7 +16,7 @@ jobs:
         os: [macos-14, macos-26]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Test timer behavior
         run: swift test
       - name: Build native app
