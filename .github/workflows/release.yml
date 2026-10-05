@@ -14,6 +14,11 @@ on:
         required: false
         default: false
         type: boolean
+      dmg_only:
+        description: Only create a DMG for an already published release
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -24,7 +29,7 @@ concurrency:
 
 jobs:
   release:
-    if: ${{ !inputs.update_cask_only }}
+    if: ${{ !inputs.update_cask_only && !inputs.dmg_only }}
     runs-on: macos-26
     timeout-minutes: 30
     permissions:
@@ -72,9 +77,69 @@ jobs:
             dist/OpenAway-macos.zip dist/OpenAway-macos.zip.sha256 \
             --verify-tag --title "OpenAway ${RELEASE_TAG#v}" --notes "$RELEASE_NOTES"
 
+  create-dmg:
+    needs: release
+    if: ${{ !cancelled() && (needs.release.result == 'success' || (github.event_name == 'workflow_dispatch' && inputs.dmg_only)) }}
+    runs-on: macos-26
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    env:
+      RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - name: Package and verify DMG from published app
+        run: |
+          set -euo pipefail
+          if [[ "${{ inputs.update_cask_only || false }}" == true ]]; then
+            echo "::error::Select only one recovery option: dmg_only or update_cask_only."
+            exit 1
+          fi
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          EXISTING_DMG=$(gh release view "$RELEASE_TAG" --json assets --jq 'any(.assets[]; .name == "OpenAway-macos.dmg" or .name == "OpenAway-macos.dmg.sha256")')
+          if [[ "$EXISTING_DMG" == true ]]; then
+            echo "::error::DMG assets already exist; refusing to overwrite published files."
+            exit 1
+          fi
+          WORK_DIR=$(mktemp -d)
+          MOUNTED=false
+          cleanup() {
+            if [[ "$MOUNTED" == true ]]; then
+              hdiutil detach "$WORK_DIR/mount" || return
+            fi
+            rm -rf "$WORK_DIR"
+          }
+          trap cleanup EXIT
+          cd "$WORK_DIR"
+          gh release download "$RELEASE_TAG" --pattern 'OpenAway-macos.zip' --pattern 'OpenAway-macos.zip.sha256'
+          [[ "$(wc -l < OpenAway-macos.zip.sha256)" -eq 1 ]]
+          read -r CHECKSUM ASSET_NAME < OpenAway-macos.zip.sha256
+          [[ "$CHECKSUM" =~ ^[a-f0-9]{64}$ && "$ASSET_NAME" == "OpenAway-macos.zip" ]]
+          shasum -a 256 -c OpenAway-macos.zip.sha256
+          ditto -x -k OpenAway-macos.zip "$WORK_DIR"
+          APP_VERSION=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' OpenAway.app/Contents/Info.plist)
+          [[ "$RELEASE_TAG" == "v$APP_VERSION" ]]
+          codesign --verify --deep --strict OpenAway.app
+          npx --yes create-dmg@8.1.0 --no-code-sign --no-version-in-filename "$WORK_DIR/OpenAway.app" "$WORK_DIR"
+          mv OpenAway.dmg OpenAway-macos.dmg
+          hdiutil verify OpenAway-macos.dmg
+          mkdir "$WORK_DIR/mount"
+          hdiutil attach OpenAway-macos.dmg -readonly -nobrowse -mountpoint "$WORK_DIR/mount"
+          MOUNTED=true
+          codesign --verify --deep --strict "$WORK_DIR/mount/OpenAway.app"
+          lipo "$WORK_DIR/mount/OpenAway.app/Contents/MacOS/OpenAway" -verify_arch arm64 x86_64
+          diff -qr OpenAway.app "$WORK_DIR/mount/OpenAway.app"
+          [[ -L "$WORK_DIR/mount/Applications" && "$(readlink "$WORK_DIR/mount/Applications")" == /Applications ]]
+          hdiutil detach "$WORK_DIR/mount"
+          MOUNTED=false
+          shasum -a 256 OpenAway-macos.dmg > OpenAway-macos.dmg.sha256
+          shasum -a 256 -c OpenAway-macos.dmg.sha256
+          gh release upload "$RELEASE_TAG" OpenAway-macos.dmg OpenAway-macos.dmg.sha256
+
   update-cask:
     needs: release
-    if: ${{ !cancelled() && (needs.release.result == 'success' || (github.event_name == 'workflow_dispatch' && inputs.update_cask_only)) }}
+    if: ${{ !cancelled() && !inputs.dmg_only && (needs.release.result == 'success' || (github.event_name == 'workflow_dispatch' && inputs.update_cask_only)) }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:

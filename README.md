@@ -11,9 +11,11 @@ Built with SwiftUI and AppKit. No accounts, analytics, or external dependencies.
 
 Requires **macOS 13 or later**.
 
-1. Download the app ZIP from [the latest release](https://github.com/phucisstupid/openaway/releases/latest).
-2. Extract it and move **OpenAway.app** to **Applications**.
+1. Download **OpenAway-macos.dmg** from [the latest release](https://github.com/phucisstupid/openaway/releases/latest).
+2. Open the disk image and drag **OpenAway** to **Applications**.
 3. Open the app and configure your routine from the menu bar.
+
+The ZIP is also available; extract it and move **OpenAway.app** to **Applications**.
 
 Or install with Homebrew:
 

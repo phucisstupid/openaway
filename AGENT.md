@@ -74,7 +74,8 @@ Manually verify multiple displays and login-item approval when affected.
 
 The build script assembles, signs, and archives in a temporary directory to avoid
 Finder/cloud metadata during signing. Generated `.build/`, `.swiftpm/`, and `dist/`
-content stays out of Git. A default build contains the host's architecture;
+content stays out of Git. Local builds produce an app and ZIP, not a DMG.
+A default build contains the host's architecture;
 `./scripts/build-app.sh --universal` combines arm64 and x86_64. Apps are ad-hoc
 signed and not notarized. Publishing is handled by `.github/workflows/release.yml`
 after a version tag is pushed, or by manually dispatching it for an existing tag.
@@ -86,11 +87,19 @@ Finder metadata on the app copied into a synced folder can affect signature chec
 1. Update `CFBundleShortVersionString` in `Resources/Info.plist`, verify, commit,
    and push the changes.
 2. Push an annotated `v<version>` tag to trigger the release workflow. Tag notes
-   become the release notes. Wait for the workflow to publish both assets.
+   become the release notes. Wait for the workflow to publish the ZIP, DMG,
+   and their SHA256 files.
 3. The workflow downloads the published ZIP/checksum, verifies them, and commits
    the cask's `version` and `sha256` to the default branch as the Actions bot.
    It skips older releases and unchanged casks. Never use a local build's checksum
    for a workflow-built release.
+
+The separate `create-dmg` job verifies the published ZIP, packages the same
+universal app using `sindresorhus/create-dmg@8.1.0`, and checks the mounted app's
+signature, architectures, and Applications link. It adds DMG assets without
+overwriting existing assets or changing the ZIP/cask. Dispatch `Release` with
+the existing tag and `dmg_only` enabled to add a DMG without rebuilding the app
+or bumping its version.
 
 If publishing succeeds but the cask update fails, dispatch `Release` with the
 existing tag and `update_cask_only` enabled. This does not rebuild or replace the

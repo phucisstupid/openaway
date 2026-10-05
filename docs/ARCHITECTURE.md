@@ -122,7 +122,15 @@ login-item approval still need manual validation on supported macOS versions.
 ## Releases
 
 `release.yml` verifies the version tag, tests and builds the universal app, and
-publishes its ZIP and SHA256. A dependent job checks out the default branch,
+publishes its ZIP and SHA256. A separate `create-dmg` job downloads and verifies
+that ZIP, then uses pinned `sindresorhus/create-dmg@8.1.0` to package the same
+ad-hoc signed app in `OpenAway-macos.dmg`. It verifies the mounted signature,
+arm64/x86_64 architectures, and Applications link before uploading the DMG and
+its SHA256 without overwriting existing assets. A `dmg_only` manual dispatch adds
+these assets to an existing release without rebuilding or replacing the ZIP.
+Local builds continue to produce only the app and ZIP.
+
+A dependent cask job checks out the default branch,
 downloads and verifies the published assets, and commits only the cask version
 and checksum using the Actions token. It serializes cask updates, skips outdated
 releases and unchanged files, and never force-pushes. A cask-only manual dispatch
