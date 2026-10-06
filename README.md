@@ -14,7 +14,7 @@ Download **OpenAway-macos-universal.dmg** from [the latest release](https://gith
 Or install with Homebrew:
 
 ```sh
-brew tap phucisstupid/openaway
+brew tap phucisstupid/openaway https://github.com/phucisstupid/openaway
 brew install --cask phucisstupid/openaway/openaway
 ```
 
