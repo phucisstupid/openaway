@@ -22,8 +22,8 @@ brew tap phucisstupid/openaway
 brew install --cask phucisstupid/openaway/openaway
 ```
 
-Release builds are ad-hoc signed, not Developer ID signed or notarized.
-macOS may block the first launch; use **System Settings > Privacy & Security > Open Anyway**.
+OpenAway is ad-hoc signed and not notarized.
+If macOS blocks it, open System Settings > Privacy & Security and choose Open Anyway.
 
 ## Features
 
