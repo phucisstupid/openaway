@@ -106,9 +106,12 @@ Keep the current cask URL and checksum valid until an arm64 release is published
 the updater migrates the cask to Apple Silicon only when those assets exist.
 
 The separate `create-dmg` job verifies the published ZIP, packages the same
-universal app using `sindresorhus/create-dmg@8.1.0` as
-`OpenAway-macos-universal.dmg`, and checks the mounted app's
-signature, architectures, and Applications link. It adds DMG assets without
+universal app using the latest published `create-dmg/create-dmg` release as
+`OpenAway-macos-universal.dmg`. Its source folder contains only `OpenAway.app`,
+and its Finder layout places the app beside an Applications shortcut.
+Resolve the tool's latest release at packaging time; do not pin a fixed version.
+The job checks the mounted app's signature, architectures, and Applications link.
+It adds DMG assets without
 overwriting existing assets or changing the ZIP/cask. Dispatch `Release` with
 the existing tag and `dmg_only` enabled to add a DMG without rebuilding the app
 or bumping its version. Recovery also accepts the legacy universal ZIP name

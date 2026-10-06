@@ -130,8 +130,11 @@ signature, and names the archive `OpenAway-macos-arm64.zip`. It then runs the
 same script with `--universal` to produce `OpenAway-macos-universal.zip` and
 publishes both ZIPs with their SHA256 files.
 A separate `create-dmg` job downloads and verifies the universal ZIP, then uses
-pinned `sindresorhus/create-dmg@8.1.0` to package the same ad-hoc signed app in
-`OpenAway-macos-universal.dmg`. It verifies the mounted signature,
+the latest published `create-dmg/create-dmg` release, resolved at packaging time,
+to package the same ad-hoc signed app in
+`OpenAway-macos-universal.dmg`. The shell tool receives a staging folder containing
+only the app; it sets a Finder layout with the app and an Applications shortcut.
+It verifies the mounted signature,
 arm64/x86_64 architectures, and Applications link before uploading the DMG and
 its SHA256 without overwriting existing assets. A `dmg_only` manual dispatch adds
 these assets to an existing release without rebuilding or replacing the ZIP.

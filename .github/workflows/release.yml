@@ -137,6 +137,21 @@ jobs:
           APP_VERSION=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' OpenAway.app/Contents/Info.plist)
           [[ "$RELEASE_TAG" == "v$APP_VERSION" ]] || exit 1
           codesign --verify --deep --strict OpenAway.app
+      - name: Resolve latest create-dmg release
+        id: create-dmg-version
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          CREATE_DMG_TAG=$(gh api repos/create-dmg/create-dmg/releases/latest --jq '.tag_name')
+          echo "tag=$CREATE_DMG_TAG" >> "$GITHUB_OUTPUT"
+      - name: Checkout create-dmg
+        uses: actions/checkout@v7
+        with:
+          repository: create-dmg/create-dmg
+          ref: ${{ steps.create-dmg-version.outputs.tag }}
+          path: create-dmg
+          persist-credentials: false
       - name: Package and verify DMG
         run: |
           set -euo pipefail
@@ -149,8 +164,15 @@ jobs:
           }
           trap cleanup_mount EXIT
           cd "$WORK_DIR"
-          npx --yes create-dmg@8.1.0 --no-code-sign --no-version-in-filename "$WORK_DIR/OpenAway.app" "$WORK_DIR"
-          mv OpenAway.dmg OpenAway-macos-universal.dmg
+          mkdir source
+          mv OpenAway.app source/
+          "$GITHUB_WORKSPACE/create-dmg/create-dmg" \
+            --volname OpenAway \
+            --window-pos 200 120 --window-size 600 400 \
+            --icon-size 100 --icon OpenAway.app 160 180 \
+            --hide-extension OpenAway.app \
+            --app-drop-link 440 180 \
+            "$WORK_DIR/OpenAway-macos-universal.dmg" "$WORK_DIR/source"
           hdiutil verify OpenAway-macos-universal.dmg
           mkdir "$WORK_DIR/mount"
           hdiutil attach OpenAway-macos-universal.dmg -readonly -nobrowse -mountpoint "$WORK_DIR/mount"
@@ -158,7 +180,7 @@ jobs:
           codesign --verify --deep --strict "$WORK_DIR/mount/OpenAway.app"
           lipo "$WORK_DIR/mount/OpenAway.app/Contents/MacOS/OpenAway" -verify_arch arm64
           lipo "$WORK_DIR/mount/OpenAway.app/Contents/MacOS/OpenAway" -verify_arch x86_64
-          diff -qr OpenAway.app "$WORK_DIR/mount/OpenAway.app"
+          diff -qr source/OpenAway.app "$WORK_DIR/mount/OpenAway.app"
           [[ -L "$WORK_DIR/mount/Applications" && "$(readlink "$WORK_DIR/mount/Applications")" == /Applications ]] || exit 1
           hdiutil detach "$WORK_DIR/mount"
           MOUNTED=false
