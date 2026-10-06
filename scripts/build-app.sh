@@ -5,8 +5,10 @@ PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$PROJECT_ROOT"
 
 ARCHITECTURES=()
+ARCHIVE_NAME=OpenAway-macos.zip
 if [[ "${1:-}" == "--universal" && $# -eq 1 ]]; then
     ARCHITECTURES=(arm64 x86_64)
+    ARCHIVE_NAME=OpenAway-macos-universal.zip
 elif [[ $# -ne 0 ]]; then
     echo "Usage: $0 [--universal]" >&2
     exit 1
@@ -47,9 +49,9 @@ codesign --force --sign - "$APP_DIR"
 codesign --verify --deep --strict "$APP_DIR"
 # Avoid carrying Finder or cloud-provider metadata into the downloadable bundle.
 mkdir -p "$PROJECT_ROOT/dist"
-ditto --norsrc --noextattr --noqtn -c -k --keepParent "$APP_DIR" "$PROJECT_ROOT/dist/OpenAway-macos.zip"
+ditto --norsrc --noextattr --noqtn -c -k --keepParent "$APP_DIR" "$PROJECT_ROOT/dist/$ARCHIVE_NAME"
 rm -rf "$PROJECT_ROOT/dist/OpenAway.app"
 ditto --norsrc --noextattr --noqtn "$APP_DIR" "$PROJECT_ROOT/dist/OpenAway.app"
 echo "Built $PROJECT_ROOT/dist/OpenAway.app"
-echo "Packaged $PROJECT_ROOT/dist/OpenAway-macos.zip"
+echo "Packaged $PROJECT_ROOT/dist/$ARCHIVE_NAME"
 echo "Open it with: open \"$PROJECT_ROOT/dist/OpenAway.app\""

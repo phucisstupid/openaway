@@ -79,8 +79,9 @@ Manually verify multiple displays and login-item approval when affected.
 The build script assembles, signs, and archives in a temporary directory to avoid
 Finder/cloud metadata during signing. Generated `.build/`, `.swiftpm/`, and `dist/`
 content stays out of Git. Local builds produce an app and ZIP, not a DMG.
-A default build contains the host's architecture;
-`./scripts/build-app.sh --universal` combines arm64 and x86_64. Apps are ad-hoc
+A default build contains the host's architecture in `OpenAway-macos.zip`;
+`./scripts/build-app.sh --universal` combines arm64 and x86_64 in
+`OpenAway-macos-universal.zip`. Apps are ad-hoc
 signed and not notarized. Publishing is handled by `.github/workflows/release.yml`
 after a version tag is pushed, or by manually dispatching it for an existing tag.
 
@@ -93,7 +94,8 @@ Finder metadata on the app copied into a synced folder can affect signature chec
 2. Push an annotated `v<version>` tag to trigger the release workflow. Tag notes
    become the release notes. On `macos-26`, the workflow uses the existing build
    script to produce and verify `OpenAway-macos-arm64.zip`, then builds the
-   universal ZIP. Wait for both ZIPs, the universal DMG, and their SHA256 files.
+   universal `OpenAway-macos-universal.zip`. Wait for both ZIPs,
+   `OpenAway-macos-universal.dmg`, and their SHA256 files.
 3. The workflow downloads the published arm64 ZIP/checksum, verifies them, and
    commits the cask's `version`, `sha256`, arm64 asset URL, and Apple Silicon
    architecture requirement together to the default branch as the Actions bot.
@@ -104,11 +106,13 @@ Keep the current cask URL and checksum valid until an arm64 release is published
 the updater migrates the cask to Apple Silicon only when those assets exist.
 
 The separate `create-dmg` job verifies the published ZIP, packages the same
-universal app using `sindresorhus/create-dmg@8.1.0`, and checks the mounted app's
+universal app using `sindresorhus/create-dmg@8.1.0` as
+`OpenAway-macos-universal.dmg`, and checks the mounted app's
 signature, architectures, and Applications link. It adds DMG assets without
 overwriting existing assets or changing the ZIP/cask. Dispatch `Release` with
 the existing tag and `dmg_only` enabled to add a DMG without rebuilding the app
-or bumping its version.
+or bumping its version. Recovery also accepts the legacy universal ZIP name
+`OpenAway-macos.zip` and refuses to overwrite either DMG naming scheme.
 
 If publishing succeeds but the cask update fails, dispatch `Release` with the
 existing tag and `update_cask_only` enabled. This requires that release's arm64

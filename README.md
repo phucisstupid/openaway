@@ -10,7 +10,7 @@ Built with SwiftUI and AppKit. No accounts, analytics, or external dependencies.
 
 Requires **macOS 13 or later**.
 
-Download **OpenAway-macos.dmg** from [the latest release](https://github.com/phucisstupid/openaway/releases/latest).
+Download **OpenAway-macos-universal.dmg** from [the latest release](https://github.com/phucisstupid/openaway/releases/latest).
 Or install with Homebrew:
 
 ```sh

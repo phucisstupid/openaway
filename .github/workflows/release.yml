@@ -77,13 +77,13 @@ jobs:
           set -euo pipefail
           VERIFY_DIR=$(mktemp -d)
           trap 'rm -rf "$VERIFY_DIR"' EXIT
-          ditto -x -k dist/OpenAway-macos.zip "$VERIFY_DIR"
+          ditto -x -k dist/OpenAway-macos-universal.zip "$VERIFY_DIR"
           codesign --verify --deep --strict "$VERIFY_DIR/OpenAway.app"
           lipo "$VERIFY_DIR/OpenAway.app/Contents/MacOS/OpenAway" -verify_arch arm64
           lipo "$VERIFY_DIR/OpenAway.app/Contents/MacOS/OpenAway" -verify_arch x86_64
           cd dist
-          shasum -a 256 OpenAway-macos.zip > OpenAway-macos.zip.sha256
-          shasum -a 256 -c OpenAway-macos.zip.sha256
+          shasum -a 256 OpenAway-macos-universal.zip > OpenAway-macos-universal.zip.sha256
+          shasum -a 256 -c OpenAway-macos-universal.zip.sha256
       - name: Publish GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -91,10 +91,10 @@ jobs:
         run: |
           RELEASE_NOTES=$(git for-each-ref --format='%(contents)' "refs/tags/$RELEASE_TAG")
           RELEASE_NOTES+=$'\n\n'
-          RELEASE_NOTES+="Apple Silicon ZIP: OpenAway-macos-arm64.zip. Universal ZIP: OpenAway-macos.zip, for Apple Silicon and Intel. Requires macOS 13 or later. Ad-hoc signed, not notarized. If macOS blocks the app, use System Settings > Privacy & Security > Open Anyway."
+          RELEASE_NOTES+="Apple Silicon ZIP: OpenAway-macos-arm64.zip. Universal ZIP: OpenAway-macos-universal.zip, for Apple Silicon and Intel. Requires macOS 13 or later. Ad-hoc signed, not notarized. If macOS blocks the app, use System Settings > Privacy & Security > Open Anyway."
           gh release create "$RELEASE_TAG" \
             dist/OpenAway-macos-arm64.zip dist/OpenAway-macos-arm64.zip.sha256 \
-            dist/OpenAway-macos.zip dist/OpenAway-macos.zip.sha256 \
+            dist/OpenAway-macos-universal.zip dist/OpenAway-macos-universal.zip.sha256 \
             --verify-tag --title "OpenAway ${RELEASE_TAG#v}" --notes "$RELEASE_NOTES"
 
   create-dmg:
@@ -118,7 +118,7 @@ jobs:
             exit 1
           fi
           [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || exit 1
-          EXISTING_DMG=$(gh release view "$RELEASE_TAG" --json assets --jq 'any(.assets[]; .name == "OpenAway-macos.dmg" or .name == "OpenAway-macos.dmg.sha256")')
+          EXISTING_DMG=$(gh release view "$RELEASE_TAG" --json assets --jq 'any(.assets[]; .name == "OpenAway-macos-universal.dmg" or .name == "OpenAway-macos-universal.dmg.sha256" or .name == "OpenAway-macos.dmg" or .name == "OpenAway-macos.dmg.sha256")')
           if [[ "$EXISTING_DMG" == true ]]; then
             echo "::error::DMG assets already exist; refusing to overwrite published files."
             exit 1
@@ -126,12 +126,14 @@ jobs:
           WORK_DIR=$(mktemp -d)
           echo "DMG_WORK_DIR=$WORK_DIR" >> "$GITHUB_ENV"
           cd "$WORK_DIR"
-          gh release download "$RELEASE_TAG" --pattern 'OpenAway-macos.zip' --pattern 'OpenAway-macos.zip.sha256'
-          [[ "$(wc -l < OpenAway-macos.zip.sha256)" -eq 1 ]] || exit 1
-          read -r CHECKSUM ASSET_NAME < OpenAway-macos.zip.sha256
-          [[ "$CHECKSUM" =~ ^[a-f0-9]{64}$ && "$ASSET_NAME" == "OpenAway-macos.zip" ]] || exit 1
-          shasum -a 256 -c OpenAway-macos.zip.sha256
-          ditto -x -k OpenAway-macos.zip "$WORK_DIR"
+          # Recovery also supports releases published before universal assets were named explicitly.
+          UNIVERSAL_ZIP=$(gh release view "$RELEASE_TAG" --json assets --jq 'if any(.assets[]; .name == "OpenAway-macos-universal.zip") then "OpenAway-macos-universal.zip" else "OpenAway-macos.zip" end')
+          gh release download "$RELEASE_TAG" --pattern "$UNIVERSAL_ZIP" --pattern "$UNIVERSAL_ZIP.sha256"
+          [[ "$(wc -l < "$UNIVERSAL_ZIP.sha256")" -eq 1 ]] || exit 1
+          read -r CHECKSUM ASSET_NAME < "$UNIVERSAL_ZIP.sha256"
+          [[ "$CHECKSUM" =~ ^[a-f0-9]{64}$ && "$ASSET_NAME" == "$UNIVERSAL_ZIP" ]] || exit 1
+          shasum -a 256 -c "$UNIVERSAL_ZIP.sha256"
+          ditto -x -k "$UNIVERSAL_ZIP" "$WORK_DIR"
           APP_VERSION=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' OpenAway.app/Contents/Info.plist)
           [[ "$RELEASE_TAG" == "v$APP_VERSION" ]] || exit 1
           codesign --verify --deep --strict OpenAway.app
@@ -148,10 +150,10 @@ jobs:
           trap cleanup_mount EXIT
           cd "$WORK_DIR"
           npx --yes create-dmg@8.1.0 --no-code-sign --no-version-in-filename "$WORK_DIR/OpenAway.app" "$WORK_DIR"
-          mv OpenAway.dmg OpenAway-macos.dmg
-          hdiutil verify OpenAway-macos.dmg
+          mv OpenAway.dmg OpenAway-macos-universal.dmg
+          hdiutil verify OpenAway-macos-universal.dmg
           mkdir "$WORK_DIR/mount"
-          hdiutil attach OpenAway-macos.dmg -readonly -nobrowse -mountpoint "$WORK_DIR/mount"
+          hdiutil attach OpenAway-macos-universal.dmg -readonly -nobrowse -mountpoint "$WORK_DIR/mount"
           MOUNTED=true
           codesign --verify --deep --strict "$WORK_DIR/mount/OpenAway.app"
           lipo "$WORK_DIR/mount/OpenAway.app/Contents/MacOS/OpenAway" -verify_arch arm64
@@ -160,12 +162,12 @@ jobs:
           [[ -L "$WORK_DIR/mount/Applications" && "$(readlink "$WORK_DIR/mount/Applications")" == /Applications ]] || exit 1
           hdiutil detach "$WORK_DIR/mount"
           MOUNTED=false
-          shasum -a 256 OpenAway-macos.dmg > OpenAway-macos.dmg.sha256
-          shasum -a 256 -c OpenAway-macos.dmg.sha256
+          shasum -a 256 OpenAway-macos-universal.dmg > OpenAway-macos-universal.dmg.sha256
+          shasum -a 256 -c OpenAway-macos-universal.dmg.sha256
       - name: Publish DMG assets
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release upload "$RELEASE_TAG" "$DMG_WORK_DIR/OpenAway-macos.dmg" "$DMG_WORK_DIR/OpenAway-macos.dmg.sha256"
+        run: gh release upload "$RELEASE_TAG" "$DMG_WORK_DIR/OpenAway-macos-universal.dmg" "$DMG_WORK_DIR/OpenAway-macos-universal.dmg.sha256"
       - name: Clean packaging files
         if: always()
         run: |

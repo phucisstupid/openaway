@@ -127,13 +127,16 @@ login-item approval still need manual validation on supported macOS versions.
 `release.yml` verifies the version tag and tests the app on `macos-26`. It uses
 `./scripts/build-app.sh` for a native arm64 build, verifies its architecture and
 signature, and names the archive `OpenAway-macos-arm64.zip`. It then runs the
-same script with `--universal` and publishes both ZIPs with their SHA256 files.
+same script with `--universal` to produce `OpenAway-macos-universal.zip` and
+publishes both ZIPs with their SHA256 files.
 A separate `create-dmg` job downloads and verifies the universal ZIP, then uses
 pinned `sindresorhus/create-dmg@8.1.0` to package the same ad-hoc signed app in
-`OpenAway-macos.dmg`. It verifies the mounted signature,
+`OpenAway-macos-universal.dmg`. It verifies the mounted signature,
 arm64/x86_64 architectures, and Applications link before uploading the DMG and
 its SHA256 without overwriting existing assets. A `dmg_only` manual dispatch adds
 these assets to an existing release without rebuilding or replacing the ZIP.
+Recovery accepts the legacy `OpenAway-macos.zip` name and refuses to overwrite
+either legacy or explicitly named universal DMG assets.
 Local builds continue to produce only the app and ZIP.
 
 A dependent cask job checks out the default branch,
