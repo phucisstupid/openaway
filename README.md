@@ -11,10 +11,6 @@ Built with SwiftUI and AppKit. No accounts, analytics, or external dependencies.
 Requires **macOS 13 or later**.
 
 Download **OpenAway-macos.dmg** from [the latest release](https://github.com/phucisstupid/openaway/releases/latest).
-
-The universal ZIP is also available; extract it and move **OpenAway.app** to **Applications**.
-The DMG and universal ZIP support both Apple Silicon and Intel Macs.
-
 Or install with Homebrew:
 
 ```sh
@@ -23,7 +19,7 @@ brew install --cask phucisstupid/openaway/openaway
 ```
 
 OpenAway is ad-hoc signed and not notarized.
-If macOS blocks it, open System Settings > Privacy & Security and choose Open Anyway.
+If macOS blocks it, open **System Settings** > **Privacy & Security** and choose **Open Anyway**.
 
 ## Features
 
