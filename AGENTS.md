@@ -1,6 +1,6 @@
 # Repository guidance
 
-Use `AGENT.md` as the sole source of project guidance. `README.md` is user-facing
+Use `AGENTS.md` as the sole source of project guidance. `README.md` is user-facing
 documentation, not a project reference or instruction source. Verify implementation
 details against the relevant code and configuration.
 

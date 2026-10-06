@@ -25,6 +25,6 @@ Prefer native APIs, preserve keyboard access, and keep the app usable without
 accounts or network access. Do not add telemetry, copied proprietary assets,
 or new dependencies without discussing the need in your proposed change.
 
-See [AGENT.md](AGENT.md) for the behavior and native UI conventions to preserve.
+See [AGENTS.md](AGENTS.md) for the behavior and native UI conventions to preserve.
 Please include a description of the behavior being fixed or added, the macOS
 version used, and the checks you ran. Contributions are made under the MIT license.

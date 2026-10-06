@@ -44,7 +44,7 @@ With Command Line Tools only, use `./scripts/test-core.sh` instead of `swift tes
 Xcode 26 or matching Command Line Tools enables Liquid Glass on macOS 26+; older systems use native materials.
 
 See [Contributing](CONTRIBUTING.md) for verification and [Architecture](docs/ARCHITECTURE.md) for the implementation structure.
-Repository guidance lives in [AGENT.md](AGENT.md).
+Repository guidance lives in [AGENTS.md](AGENTS.md).
 
 ## License
 
