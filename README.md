@@ -25,7 +25,7 @@ If macOS blocks it, open **System Settings** > **Privacy & Security** and choose
 
 ## Features
 
-- Customizable eye breaks, blink and posture reminders.
+- Customizable eye breaks, plus centered animated icons for blink and posture reminders.
 - Breaks show a five-second warning and start once typing and mouse activity have been idle for three seconds.
 - Automatic pauses for idle time, meetings, video playback, and selected apps.
 - Native settings that open centered and remember your window position, menu bar controls, and local activity history.
@@ -50,7 +50,7 @@ swift test
 With Command Line Tools only, use `./scripts/test-core.sh` instead of `swift test`.
 Run `ruby scripts/test-cask.rb` and `ruby scripts/test-release.rb` to check release automation on macOS.
 Xcode 26 or matching Command Line Tools enables Liquid Glass on macOS 26+; older systems use native materials.
-Reminder buttons stay readable and highlight on hover while the popup preserves your current app's keyboard focus.
+Blink and posture icons fade after 1.5 seconds and respect Reduce Motion. Reminders preserve your current app's keyboard focus; the advance break popup keeps its readable controls and highlights buttons on hover.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for verification and [ARCHITECTURE.md](docs/ARCHITECTURE.md) for the implementation structure.
 Repository guidance lives in [AGENTS.md](AGENTS.md).

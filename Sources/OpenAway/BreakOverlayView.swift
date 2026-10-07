@@ -75,19 +75,16 @@ struct WellnessReminderView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.colorScheme) private var colorScheme
     @ViewState private var hoveredMinutes: Int?
-    private var title: String {
-        switch model.reminderKind {
-        case .headsUp: return "A little pause is coming."
-        case .posture: return "Relax your shoulders."
-        case .blink: return "A slow blink."
-        }
-    }
     var body: some View {
         Group {
-            if model.isShowingHeadsUp {
+            if model.isShowingHeadsUp && !model.isReminderPreview {
                 headsUp
             } else {
-                wellnessReminder
+                ReminderSymbol(kind: model.reminderKind, active: model.reminderText != nil,
+                               animationStart: model.reminderStartedAt)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(model.reminderText ?? "Wellness reminder")
+                    .accessibilityAddTraits(.isImage)
             }
         }
         .padding(14)
@@ -138,31 +135,6 @@ struct WellnessReminderView: View {
         let dark = model.settings.appearance == "dark" || (model.settings.appearance == "system" && colorScheme == .dark)
         return dark ? 0.08 : -0.05
     }
-
-    private var wellnessReminder: some View {
-        HStack(spacing: 18) {
-            ReminderSymbol(kind: model.reminderKind, active: model.reminderText != nil).frame(width: 52, height: 64)
-            VStack(alignment: .leading, spacing: 8) {
-                Text(title).font(.headline)
-                Text(model.reminderKind == .headsUp && !model.isReminderPreview ? "Your break starts in \(model.engine.remainingSeconds) seconds." : model.reminderText ?? "Take a comfortable breath.")
-                    .font(.subheadline).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-                if model.reminderKind == .headsUp && !model.isReminderPreview {
-                    HStack {
-                        Button("Start now") { model.startBreak(kind: model.engine.currentBreakKind) }
-                        Button("+5 min") { model.snooze(minutes: 5) }
-                    }.buttonStyle(.bordered).controlSize(.small)
-                } else if model.isReminderPreview {
-                    Text("Preview").font(.caption).foregroundStyle(.tertiary)
-                }
-            }
-            Spacer(minLength: 0)
-            Button { model.dismissReminder() } label: {
-                Image(systemName: "xmark").font(.caption.weight(.semibold)).padding(5)
-            }.buttonStyle(.plain).foregroundStyle(.secondary).help("Dismiss reminder")
-                .accessibilityLabel("Dismiss reminder")
-        }.padding(22).frame(width: 432, alignment: .leading)
-            .nativeGlass(cornerRadius: 24)
-    }
 }
 
 private extension View {
@@ -179,19 +151,65 @@ private extension View {
 private struct ReminderSymbol: View {
     let kind: ReminderKind
     let active: Bool
+    let animationStart: Date
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         TimelineView(.animation(minimumInterval: 1.0 / 30, paused: reduceMotion || !active || kind == .headsUp)) { context in
-            let seconds = context.date.timeIntervalSinceReferenceDate
-            let blink = seconds.truncatingRemainder(dividingBy: 3)
-            let movement = reduceMotion ? 0 : sin(seconds * 2)
-            Image(systemName: kind == .blink ? "eye" : kind == .posture ? "figure.stand" : "leaf")
-                .font(.system(size: kind == .posture ? 43 : 35, weight: .light))
-                .foregroundStyle(.tint)
-                .scaleEffect(x: 1, y: kind == .blink && !reduceMotion && blink < 0.22 ? 0.08 : 1)
-                .rotationEffect(.degrees(kind == .posture ? movement * 3 : 0))
-                .offset(y: kind == .posture ? movement * 2 : 0)
-        }.accessibilityHidden(true)
+            let seconds = max(0, context.date.timeIntervalSince(animationStart))
+            let eyelidHeight = reduceMotion ? 9 : max(0, 4 + 5 * cos(seconds * 2 * .pi / 0.4))
+            let straighten = reduceMotion ? 1 : (1 - cos(min(seconds / 0.8, 1) * .pi)) / 2
+            ZStack {
+                Circle().fill(Color(hex: 0x291D38).opacity(0.90))
+                Circle()
+                    .fill(LinearGradient(colors: [Color(hex: 0xFFA943), Color(hex: 0xF65BB3), Color(hex: 0xDB54D5)],
+                                         startPoint: .topTrailing, endPoint: .bottomLeading))
+                    .padding(14)
+                if kind == .blink {
+                    Path { path in
+                        for (x, direction) in [(CGFloat(12), CGFloat(1)), (CGFloat(68), CGFloat(-1))] {
+                            path.move(to: CGPoint(x: x, y: 24 - eyelidHeight))
+                            path.addLine(to: CGPoint(x: x + 18 * direction, y: 24))
+                            path.addLine(to: CGPoint(x: x, y: 24 + eyelidHeight))
+                        }
+                    }
+                    .stroke(Color(hex: 0x39223F), style: StrokeStyle(lineWidth: 8, lineCap: .round, lineJoin: .round))
+                    .frame(width: 80, height: 48)
+                } else if kind == .posture {
+                    ZStack {
+                        Path { path in
+                            path.move(to: CGPoint(x: 20, y: 36))
+                            path.addLine(to: CGPoint(x: 20, y: 62))
+                            path.addLine(to: CGPoint(x: 51, y: 62))
+                            path.move(to: CGPoint(x: 24, y: 62))
+                            path.addLine(to: CGPoint(x: 24, y: 78))
+                        }
+                        .stroke(Color(hex: 0x39223F).opacity(0.55), style: StrokeStyle(lineWidth: 4, lineCap: .round, lineJoin: .round))
+                        Path { path in
+                            path.addEllipse(in: CGRect(x: 43.5 - 16 * straighten, y: 11.5 - 6 * straighten, width: 15, height: 15))
+                        }
+                        .fill(Color(hex: 0x39223F))
+                        Path { path in
+                            path.move(to: CGPoint(x: 49 - 16 * straighten, y: 29 - 6 * straighten))
+                            path.addCurve(to: CGPoint(x: 34, y: 55),
+                                          control1: CGPoint(x: 42 - 10 * straighten, y: 36),
+                                          control2: CGPoint(x: 26 + 8 * straighten, y: 45))
+                            path.addLine(to: CGPoint(x: 60, y: 55))
+                            path.addLine(to: CGPoint(x: 60, y: 78))
+                            path.addLine(to: CGPoint(x: 68, y: 78))
+                            path.move(to: CGPoint(x: 44 - 10 * straighten, y: 35 - 5 * straighten))
+                            path.addLine(to: CGPoint(x: 49 - 5 * straighten, y: 46))
+                            path.addLine(to: CGPoint(x: 61, y: 46))
+                        }
+                        .stroke(Color(hex: 0x39223F), style: StrokeStyle(lineWidth: 6, lineCap: .round, lineJoin: .round))
+                    }
+                    .frame(width: 88, height: 88)
+                } else {
+                    Image(systemName: "leaf").font(.system(size: 46, weight: .medium))
+                        .foregroundStyle(Color(hex: 0x39223F))
+                }
+            }
+            .frame(width: 160, height: 160)
+        }
     }
 }

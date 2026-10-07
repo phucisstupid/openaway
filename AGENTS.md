@@ -46,8 +46,8 @@ its test bodies come from the XCTest source files.
   the screen.
 - Scheduled breaks show a full five-second warning, then wait for three seconds
   without typing or mouse activity. A held mouse button counts as activity.
-- Reminder panels must not take keyboard focus. Blink/posture overlays fade after
-  seven seconds and honor Reduce Motion.
+- Reminder panels must not take keyboard focus. Blink/posture overlays and their
+  previews fade after 1.5 seconds and honor Reduce Motion.
 - A real break requires two distinct Escape presses within two seconds to skip;
   key repeat does not count. A preview closes with one press.
 - Previews must not reset the timer or write history. Only completed short breaks

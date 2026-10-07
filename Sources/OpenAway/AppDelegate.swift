@@ -16,14 +16,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     private var screenSignature = ""
     private var rebuildingWindows = false
     private var smokeTesting = false
+    private var animateReminders = true
     private var reminderPresented = false
     private var reminderAnimation = 0
+    private var reminderShowsHeadsUp: Bool?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
         let smoke = ProcessInfo.processInfo.arguments.contains("--smoke-test")
         let interactiveSmoke = smoke && ProcessInfo.processInfo.arguments.contains("--interactive")
         smokeTesting = smoke
+        animateReminders = !smoke || interactiveSmoke
         model = AppModel(persists: !smoke)
         model.coordinator = self
         if smoke {
@@ -39,7 +42,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         applyAppearance()
         model.begin()
         if interactiveSmoke {
-            model.stop()
             model.selectedPage = "general"
         }
         // The first launch is discoverable; closing this window leaves the timer running.
@@ -183,7 +185,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         guard shouldShow else {
             guard let panel = reminderPanel else { return }
             // Automatic pauses and breaks suppress the HUD immediately.
-            if !mayPresent || smokeTesting { panel.orderOut(nil); return }
+            if !mayPresent || !animateReminders { panel.orderOut(nil); return }
             NSAnimationContext.runAnimationGroup { context in
                 context.duration = reduceMotion ? 0.12 : 0.25
                 panel.animator().alphaValue = 0
@@ -213,37 +215,59 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         guard let panel = reminderPanel else { return }
         sizeReminderPanel(panel)
         guard let destination = reminderOrigin(for: panel) else { return }
-        panel.setFrameOrigin(NSPoint(x: destination.x, y: destination.y + (reduceMotion || smokeTesting ? 0 : 12)))
-        panel.alphaValue = smokeTesting ? 1 : 0
+        panel.setFrameOrigin(NSPoint(x: destination.x, y: destination.y + (reduceMotion || !animateReminders ? 0 : 12)))
+        panel.alphaValue = animateReminders ? 0 : 1
         panel.orderFrontRegardless()
         NSAnimationContext.runAnimationGroup { context in
-            context.duration = smokeTesting ? 0 : reduceMotion ? 0.12 : 0.3
+            context.duration = animateReminders ? (reduceMotion ? 0.12 : 0.3) : 0
             panel.animator().alphaValue = 1
             panel.animator().setFrameOrigin(destination)
         }
     }
 
     private func sizeReminderPanel(_ panel: NSPanel) {
+        let showsHeadsUp = model.isShowingHeadsUp && !model.isReminderPreview
+        panel.hasShadow = showsHeadsUp
+        panel.ignoresMouseEvents = !showsHeadsUp
+        if reminderShowsHeadsUp != showsHeadsUp {
+            // Update the hosting root before measuring a switch between card and icon.
+            (panel.contentView as? NSHostingView<WellnessReminderView>)?.rootView = WellnessReminderView(model: model)
+            reminderShowsHeadsUp = showsHeadsUp
+            panel.contentView?.layoutSubtreeIfNeeded()
+        }
         guard let size = panel.contentView?.fittingSize, size.width > 0, size.height > 0,
               panel.frame.size != size else { return }
-        let center = panel.frame.midX
-        let top = panel.frame.maxY
-        panel.setFrame(NSRect(x: center - size.width / 2, y: top - size.height,
-                              width: size.width, height: size.height), display: true)
+        panel.setContentSize(size)
+        if let origin = reminderOrigin(for: panel) { panel.setFrameOrigin(origin) }
     }
 
     private func reminderOrigin(for panel: NSPanel) -> NSPoint? {
         guard let screen = NSScreen.main ?? NSScreen.screens.first else { return nil }
-        return NSPoint(x: screen.visibleFrame.midX - panel.frame.width / 2,
-                       y: screen.visibleFrame.maxY - panel.frame.height - 18)
+        if model.isShowingHeadsUp && !model.isReminderPreview {
+            return NSPoint(x: screen.visibleFrame.midX - panel.frame.width / 2,
+                           y: screen.visibleFrame.maxY - panel.frame.height - 18)
+        }
+        return NSPoint(x: screen.frame.midX - panel.frame.width / 2,
+                       y: screen.frame.midY - panel.frame.height / 2)
     }
 
     private func installStatusItem() {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         if let button = item.button {
-            let image = NSImage(systemSymbolName: "leaf", accessibilityDescription: "OpenAway")
-            image?.isTemplate = true
-            button.image = image
+            if let leaf = NSImage(systemSymbolName: "leaf", accessibilityDescription: "OpenAway") {
+                let image = NSImage(size: leaf.size, flipped: false) { rect in
+                    guard let context = NSGraphicsContext.current?.cgContext else { return false }
+                    context.saveGState()
+                    defer { context.restoreGState() }
+                    context.translateBy(x: rect.minX + rect.maxX, y: 0)
+                    context.scaleBy(x: -1, y: 1)
+                    leaf.draw(in: rect)
+                    return true
+                }
+                image.isTemplate = true
+                image.accessibilityDescription = "OpenAway"
+                button.image = image
+            }
             button.imagePosition = .imageLeading
             button.font = NSFont.monospacedDigitSystemFont(ofSize: 12, weight: .medium)
         }
@@ -481,10 +505,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         }, "picture import persists, renders its pixels, rejects invalid images, and resets safely")
         check(imageBlurSmokeCheck(), "image blur reduces pixel contrast and returns to sharp at zero")
         check(ActivityMonitor.smokeCheck(), "activity metadata matching, disabled state, and unchanged permissions")
-        check(AppModel.reminderSmokeCheck(), "overlapping reminders wait until the current overlay ends")
+        check(AppModel.reminderSmokeCheck(), "reminders wait their turn and previews expire without changing the paused timer or history")
+        func wellnessIconIsCentered() -> Bool {
+            guard let panel = reminderPanel, let screen = NSScreen.main ?? NSScreen.screens.first else { return false }
+            return panel.isVisible && !panel.canBecomeKey && !panel.canBecomeMain && panel.ignoresMouseEvents
+                && panel.frame.width <= 200 && panel.frame.height <= 200
+                && abs(panel.frame.midX - screen.frame.midX) < 1 && abs(panel.frame.midY - screen.frame.midY) < 1
+        }
         check(model.countdownSmokeCheck { [self] in
+            if model.isReminderPreview { return wellnessIconIsCentered() && breakWindows.isEmpty }
             if model.isShowingHeadsUp {
-                return reminderPanel?.isVisible == true && reminderPanel?.canBecomeKey == false && breakWindows.isEmpty
+                guard let panel = reminderPanel, let screen = NSScreen.main ?? NSScreen.screens.first else { return false }
+                return panel.isVisible && !panel.canBecomeKey && !panel.ignoresMouseEvents && breakWindows.isEmpty
+                    && abs(panel.frame.midX - screen.visibleFrame.midX) < 1
+                    && abs(panel.frame.maxY - (screen.visibleFrame.maxY - 18)) < 1
             }
             if model.isPreviewing || model.engine.phase == .resting {
                 return reminderPanel?.isVisible != true && breakWindows.count == NSScreen.screens.count
@@ -553,11 +587,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         check(model.engine.phase == .paused && model.engine.remainingSeconds == pausedRemaining + 300, "snooze extends a paused focus timer without resuming")
         model.resume()
         let beforeReminder = model.engine.remainingSeconds
+        let beforeReminderHistory = model.records
+        let beforeReminderKeyWindow = NSApp.keyWindow
         model.previewReminder(.blink)
-        check(reminderPanel?.isVisible == true, "reminder appears during focus")
+        check(wellnessIconIsCentered(), "blink preview is a centered, nonactivating icon that lets clicks pass through")
         check(model.reminderKind == .blink && model.engine.remainingSeconds == beforeReminder, "blink preview preserves focus timer")
         model.previewReminder(.posture)
+        check(wellnessIconIsCentered(), "posture preview is a centered, nonactivating icon that lets clicks pass through")
         check(model.reminderKind == .posture && model.engine.remainingSeconds == beforeReminder, "posture preview preserves focus timer")
+        check(model.records == beforeReminderHistory && NSApp.keyWindow === beforeReminderKeyWindow,
+              "wellness previews preserve history and keyboard focus")
         if let activeID = NSWorkspace.shared.frontmostApplication?.bundleIdentifier {
             model.settings.excludedBundleIDs = [activeID]
             check(model.engine.phase == .paused && model.reminderText == nil && reminderPanel?.isVisible == false, "foreground exclusion pauses and dismisses reminder")
@@ -566,10 +605,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         } else {
             failures.append("foreground application available for exclusion check")
         }
-        if failures.isEmpty { print("OpenAway platform smoke test passed (\(NSScreen.screens.count) display(s)).") }
-        else { fputs("OpenAway platform smoke test FAILED: \(failures.joined(separator: ", "))\n", stderr) }
-        model.stop()
-        if failures.isEmpty { NSApp.terminate(nil) } else { exit(1) }
+        model.pause(minutes: nil)
+        model.begin()
+        model.previewReminder(.blink)
+        check(wellnessIconIsCentered(), "blink preview appears while paused")
+        let pausedTimer = model.engine.remainingSeconds
+        let previewHistory = model.records
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.25) { [self] in
+            check(model.reminderText == nil && !model.isReminderPreview && reminderPanel?.isVisible != true
+                  && model.engine.remainingSeconds == pausedTimer && model.records == previewHistory,
+                  "live blink preview expires after 1.5 seconds without changing timer or history")
+            model.previewReminder(.posture)
+            check(wellnessIconIsCentered(), "posture preview appears while paused")
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.25) { [self] in
+                check(model.reminderText == nil && !model.isReminderPreview && reminderPanel?.isVisible != true
+                      && model.engine.remainingSeconds == pausedTimer && model.records == previewHistory,
+                      "live posture preview expires after 1.5 seconds without changing timer or history")
+                if failures.isEmpty { print("OpenAway platform smoke test passed (\(NSScreen.screens.count) display(s)).") }
+                else { fputs("OpenAway platform smoke test FAILED: \(failures.joined(separator: ", "))\n", stderr) }
+                model.stop()
+                if failures.isEmpty { NSApp.terminate(nil) } else { exit(1) }
+            }
+        }
     }
 }
 

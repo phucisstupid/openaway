@@ -19,6 +19,7 @@ final class AppModel: ObservableObject {
     @Published var selectedPage = "general"
     @Published var reminderText: String?
     @Published private(set) var reminderKind: ReminderKind = .posture
+    @Published private(set) var reminderStartedAt = Date()
     @Published private(set) var isReminderPreview = false
     @Published var launchAtLoginError: String?
     @Published private(set) var breakImage: NSImage?
@@ -378,10 +379,11 @@ final class AppModel: ObservableObject {
 
     private func showReminder(_ kind: ReminderKind, text: String, now: Date, preview: Bool = false) {
         guard !isPreviewing && engine.phase != .resting && (preview || engine.phase != .paused) else { return }
+        reminderStartedAt = now
         reminderKind = kind
         isReminderPreview = preview
         reminderText = text
-        reminderExpiresAt = now.addingTimeInterval(kind == .headsUp ? 10 : 7)
+        reminderExpiresAt = now.addingTimeInterval(kind == .headsUp ? 10 : 1.5)
         coordinator?.synchronizeReminder()
     }
 
@@ -399,7 +401,22 @@ final class AppModel: ObservableObject {
         guard model.reminderKind == .posture else { return false }
         model.dismissReminder()
         model.pulse()
-        return model.reminderKind == .blink && model.reminderText != nil
+        guard model.reminderKind == .blink, model.reminderText != nil else { return false }
+        model.pause(minutes: nil)
+        let remaining = model.engine.remainingSeconds
+        let history = model.records
+        for kind in [ReminderKind.blink, .posture] {
+            let presentedAt = Date()
+            model.previewReminder(kind)
+            guard model.reminderStartedAt >= presentedAt, let expiry = model.reminderExpiresAt,
+                  abs(expiry.timeIntervalSince(presentedAt) - 1.5) < 0.1 else { return false }
+            model.pulse(now: expiry.addingTimeInterval(-0.01), inputIdleSeconds: 0)
+            guard model.reminderText != nil, model.isReminderPreview else { return false }
+            model.pulse(now: expiry, inputIdleSeconds: 0)
+            guard model.reminderText == nil, !model.isReminderPreview,
+                  model.engine.remainingSeconds == remaining, model.records == history else { return false }
+        }
+        return true
     }
 
     static func resetSettingsSmokeCheck() -> Bool {
@@ -476,6 +493,11 @@ final class AppModel: ObservableObject {
         engine = BreakEngine(settings: settings, now: now.addingTimeInterval(-Double(settings.breakIntervalMinutes * 60)))
         pulse(now: now, inputIdleSeconds: 0)
         guard isShowingHeadsUp, engine.remainingSeconds == 5, presentationMatches() else { return false }
+        previewReminder(.blink)
+        guard isShowingHeadsUp, isReminderPreview, engine.remainingSeconds == 5, records.isEmpty,
+              presentationMatches() else { return false }
+        dismissReminder()
+        guard isShowingHeadsUp, presentationMatches() else { return false }
         pulse(now: now.addingTimeInterval(5), inputIdleSeconds: 0)
         guard isShowingHeadsUp, engine.remainingSeconds == 0, presentationMatches() else { return false }
         pulse(now: now.addingTimeInterval(20), inputIdleSeconds: 2.9)

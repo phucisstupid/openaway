@@ -35,8 +35,8 @@ rest, since looking away is the purpose of a break.
 The automatic-break gate uses public CoreGraphics input-idle timing and mouse-button
 state. It requires three seconds without activity and does not install an event tap
 or read keys. The advance popup is derived from the preparing phase, so it persists
-through activity and returns after pause or preview. Wellness reminders retain their
-separate seven-second expiry.
+through activity and returns after pause or preview. Blink and posture reminders
+and their previews expire after 1.5 seconds.
 
 Settings and bounded history are JSON-encoded into the app's UserDefaults domain.
 The launch-at-login setting uses ServiceManagement; failures are exposed in
@@ -55,10 +55,19 @@ Pause or Resume. It has no duplicate Open OpenAway command.
 
 Blur mode uses an active `NSVisualEffectView` with `behindWindow` blending in clear,
 nonopaque break windows. The desktop is never captured. The message and countdown
-sit in the center, with glass actions along the bottom. The top-center reminder panel cannot become key or main, keeping
-the foreground application's typing focus throughout the warning and wait.
+sit in the center, with glass actions along the bottom. The reminder panel cannot
+become key or main, keeping the foreground application's typing focus.
+Blink and posture reminders show only a circular gradient icon at the center of
+the current display and let clicks pass through. Native SwiftUI paths animate a
+blink using only inward-facing chevrons: their upper and lower strokes move
+vertically in a 0.4-second cycle, closing fully into straight lines, with narrow
+lid openings and space between the eyes. Posture shows a minimal seated figure
+on a fixed chair, straightening its back in 0.8 seconds, then holding upright.
+Both use the same gradient and dark strokes. Reduce Motion keeps both icons still.
+The advance break popup stays at the top center during the warning and wait.
 Its SwiftUI content uses an active control appearance so enabled buttons stay
-readable even though the panel does not take focus.
+readable even though the panel does not take focus. Changes between the icon and
+advance popup resize and reposition the same panel.
 The warning's native buttons also highlight on hover, with animation disabled
 when Reduce Motion is enabled.
 
@@ -125,13 +134,15 @@ installed Command Line Tools do not include XCTest. It fails on any assertion
 or undiscoverable test class; it is not a general-purpose XCTest replacement.
 
 The bundled executable's `--smoke-test` uses transient settings/history and checks
-real dashboard, reminder, and overlay lifecycles, including first-open centering
+real dashboard, reminder, and overlay lifecycles, including preview expiry, first-open centering
 with a temporary frame autosave name and position preservation on reopening. It also
 simulates sleep, lock, and foreground exclusion transitions. ActivityMonitor uses
 passive CoreAudio/AVFoundation metadata; video classification
 is an audio-based heuristic: muted video can be missed, while browser audio can
 pause reminders. The floating
 reminder panel fades/slides without activation and honors Reduce Motion.
+Interactive smoke previews keep the half-second pulse and fade animations running
+so reminders expire as they do in normal use.
 
 Actual multi-monitor hardware behavior and
 login-item approval still need manual validation on supported macOS versions.

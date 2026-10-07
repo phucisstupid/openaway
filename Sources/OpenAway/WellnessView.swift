@@ -25,7 +25,7 @@ struct WellnessView: View {
             } header: {
                 Text("Posture")
             } footer: {
-                Text("Floating reminders fade away without taking keyboard focus and stay quiet while breaks are paused.")
+                Text("Animated icons appear in the center of your screen without taking keyboard focus and fade after 1.5 seconds. Reminders stay quiet while breaks are paused.")
                     .font(.caption).foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
