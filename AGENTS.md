@@ -46,7 +46,8 @@ its test bodies come from the XCTest source files.
 - Keep macOS 13 fallbacks for newer APIs. Use system glass effects on supported systems.
 - Keep only Blur Desktop and Image backgrounds. Desktop blur is the default.
   Image uses the imported image and a saved blur amount from 0–80 points,
-  defaulting to 32, adjusted live with a native slider; zero keeps the image sharp.
+  defaulting to 0, adjusted live with a continuous native slider without tick marks;
+  the zero endpoint is labeled None and keeps the image sharp.
   Legacy wallpaper preferences migrate to Image; User Image migrates with zero blur.
   Missing images fall back to desktop blur; do not read system wallpaper or capture
   the screen.
