@@ -1,8 +1,14 @@
 # Repository guidance
 
-Use `AGENTS.md` as the sole source of project guidance. `README.md` is user-facing
-documentation, not a project reference or instruction source. Verify implementation
-details against the relevant code and configuration.
+Use `AGENTS.md` as the sole source of project guidance. `README.md` is a brief
+project overview and installation/development guide, not an app feature reference
+or instruction source. Verify implementation details against the relevant code
+and configuration.
+
+Do not edit README as part of routine feature, UI, or behavior changes. Edit it
+only when the user explicitly requests a README change. Keep detailed app behavior,
+UI descriptions, timing rules, and implementation notes in `AGENTS.md` or
+`docs/ARCHITECTURE.md`.
 
 OpenAway is a native macOS menu bar break reminder, built with SwiftUI, AppKit,
 and Foundation. It supports macOS 13+, with Liquid Glass on macOS 26+ when built
@@ -124,5 +130,5 @@ must permit the bot's normal push; concurrent branch changes cause a visible
 failure rather than a force push. Verify updater changes
 with `ruby scripts/test-cask.rb`.
 
-Update README and architecture notes when behavior changes. Use original artwork,
+Update architecture notes when behavior changes. Use original artwork,
 preserve the MIT license, and describe OpenAway as an independent project.

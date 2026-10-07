@@ -25,17 +25,11 @@ If macOS blocks it, open **System Settings** > **Privacy & Security** and choose
 
 ## Features
 
-- Customizable eye breaks, plus centered animated icons for blink and posture reminders.
-- Breaks show a five-second warning and start once typing and mouse activity have been idle for three seconds.
+- Customizable eye breaks, blink and posture reminders.
 - Automatic pauses for idle time, meetings, video playback, and selected apps.
-- Native settings that open centered and remember your window position, menu bar controls, and local activity history.
 
 Preferences and history stay on your Mac.
 OpenAway does not capture screen, keyboard, camera, or microphone content.
-
-Activity shows today's completed breaks and rest time, your current streak,
-a seven-day chart, and your latest eight breaks in native grouped sections.
-Clear History requires confirmation.
 
 ## Development
 
