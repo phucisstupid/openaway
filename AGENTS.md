@@ -118,9 +118,8 @@ consistent. Verify the ZIP after extracting it into a clean temporary directory;
 Finder metadata on the app copied into a synced folder can affect signature checks.
 
 Every release must have a minimal, human-readable changelog in its annotated tag
-notes. Use one to three short bullets describing user-visible improvements since
-the previous release. Prefer plain language; omit implementation details, internal
-tooling, commit hashes, and test logs. The workflow publishes these notes as the
+notes. Prefer plain language; omit implementation details, internal tooling,
+commit hashes, and test logs. The workflow publishes these notes as the
 GitHub release changelog, followed by the standard download and installation notes.
 
 1. Update `CFBundleShortVersionString` in `Resources/Info.plist`, verify, commit,
