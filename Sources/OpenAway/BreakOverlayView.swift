@@ -89,6 +89,8 @@ struct WellnessReminderView: View {
         }
         .padding(14)
         .preferredColorScheme(model.settings.appearance == "dark" ? .dark : model.settings.appearance == "light" ? .light : nil)
+        // The nonactivating panel keeps typing focus elsewhere, but its controls are available.
+        .environment(\.controlActiveState, .key)
     }
 
     private var headsUp: some View {

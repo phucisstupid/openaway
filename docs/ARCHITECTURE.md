@@ -57,6 +57,8 @@ Blur mode uses an active `NSVisualEffectView` with `behindWindow` blending in cl
 nonopaque break windows. The desktop is never captured. The message and countdown
 sit in the center, with glass actions along the bottom. The top-center reminder panel cannot become key or main, keeping
 the foreground application's typing focus throughout the warning and wait.
+Its SwiftUI content uses an active control appearance so enabled buttons stay
+readable even though the panel does not take focus.
 
 Desktop blur is the default background; removed landscape themes migrate to it.
 Legacy wallpaper preferences migrate to Image. Legacy User Image preferences

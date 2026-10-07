@@ -45,6 +45,7 @@ swift test
 With Command Line Tools only, use `./scripts/test-core.sh` instead of `swift test`.
 Run `ruby scripts/test-cask.rb` and `ruby scripts/test-release.rb` to check release automation on macOS.
 Xcode 26 or matching Command Line Tools enables Liquid Glass on macOS 26+; older systems use native materials.
+Reminder buttons stay readable while the popup preserves your current app's keyboard focus.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for verification and [ARCHITECTURE.md](docs/ARCHITECTURE.md) for the implementation structure.
 Repository guidance lives in [AGENTS.md](AGENTS.md).
