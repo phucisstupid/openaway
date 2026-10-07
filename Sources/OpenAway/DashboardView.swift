@@ -17,13 +17,7 @@ struct DashboardView: View {
             case "appearance": AppearanceView(model: model)
             case "shortcuts": KeyboardShortcutsView()
             case "about": AboutView()
-            case "insights":
-                ScrollView {
-                    InsightsView(model: model)
-                    .frame(maxWidth: 800)
-                    .padding(26).frame(maxWidth: .infinity, alignment: .top)
-                }
-                .scrollIndicators(.hidden)
+            case "insights": InsightsView(model: model)
             default: ScheduleView(model: model)
             }
         }

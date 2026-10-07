@@ -32,6 +32,10 @@ If macOS blocks it, open **System Settings** > **Privacy & Security** and choose
 Preferences and history stay on your Mac.
 OpenAway does not capture screen, keyboard, camera, or microphone content.
 
+Activity shows today's completed breaks and rest time, your current streak,
+a seven-day chart, and your latest eight breaks in native grouped sections.
+Clear History requires confirmation.
+
 ## Development
 
 Use Xcode or Apple's Command Line Tools on macOS:

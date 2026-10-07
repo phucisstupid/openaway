@@ -93,13 +93,18 @@ live and saves the selected amount.
 Keyboard Shortcuts lists the app's
 commands in their own grouped forms. About shows the app identity, version from
 the bundle, a short description, and a native link to the OpenAway GitHub repository.
-Activity owns history deletion in its Recent moments header, with destructive
-confirmation; the action is disabled when history is empty. The default window expands to
+Activity uses a native grouped `Form`: Summary shows completed breaks today,
+rest time today, and the current streak; Last 7 days shows a completed-break chart;
+Recent breaks shows the latest eight records with aligned duration and status.
+Totals count completed breaks, while recent history also includes breaks ended
+early. The final form group contains Clear History…, which requires destructive
+confirmation and is disabled when history is empty.
+The default window expands to
 1200 by 900 points, bounded by the screen's available area. The selected sidebar
 row identifies the current section without a repeated header in the detail pane.
 The sidebar, settings pages, and Activity remain scrollable; compact About centers
-its content in the full detail pane. General uses the system scroll indicator. Reset to Defaults is
-the final option in General and preserves break history.
+its content in the full detail pane. General and Activity use the system scroll
+indicator. Reset to Defaults is the final option in General and preserves break history.
 Liquid Glass uses the system glassEffect/button APIs on macOS 26+, with native
 material/control fallbacks. SwiftUI views observe `AppModel`. Shared colors and background renderers
 live in `Theme.swift`. Custom message editing uses a draft committed on submission
