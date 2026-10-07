@@ -254,20 +254,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     private func installStatusItem() {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         if let button = item.button {
-            if let leaf = NSImage(systemSymbolName: "leaf", accessibilityDescription: "OpenAway") {
-                let image = NSImage(size: leaf.size, flipped: false) { rect in
-                    guard let context = NSGraphicsContext.current?.cgContext else { return false }
-                    context.saveGState()
-                    defer { context.restoreGState() }
-                    context.translateBy(x: rect.minX + rect.maxX, y: 0)
-                    context.scaleBy(x: -1, y: 1)
-                    leaf.draw(in: rect)
-                    return true
-                }
-                image.isTemplate = true
-                image.accessibilityDescription = "OpenAway"
-                button.image = image
-            }
+            let image = NSImage(systemSymbolName: "leaf", accessibilityDescription: "OpenAway")
+            image?.isTemplate = true
+            button.image = image
             button.imagePosition = .imageLeading
             button.font = NSFont.monospacedDigitSystemFont(ofSize: 12, weight: .medium)
         }
