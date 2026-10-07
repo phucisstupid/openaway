@@ -23,7 +23,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
     public var breakTheme = "blur"
     public var breakImagePath: String?
     public var breakImageName: String?
-    public var breakImageBlurRadius = 32.0
+    public var breakImageBlurRadius = 0.0
     public var breakMessage = "Look up. Breathe out."
     public var excludedBundleIDs: [String] = []
 
@@ -44,7 +44,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
             breakImageBlurRadius = 0
         }
         if !["blur", "blurImage"].contains(breakTheme) { breakTheme = "blur" }
-        breakImageBlurRadius = breakImageBlurRadius.isFinite ? min(max(breakImageBlurRadius, 0), 80) : 32
+        breakImageBlurRadius = breakImageBlurRadius.isFinite ? min(max(breakImageBlurRadius, 0), 80) : 0
         breakMessage = String(breakMessage.trimmingCharacters(in: .whitespacesAndNewlines).prefix(160))
         if breakMessage.isEmpty { breakMessage = "Look up. Breathe out." }
         var seen = Set<String>()

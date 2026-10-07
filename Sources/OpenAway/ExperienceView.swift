@@ -45,7 +45,7 @@ struct ExperienceView: View {
                 LabeledContent("Blur") {
                     HStack {
                         Text("None").font(.caption).foregroundStyle(.secondary)
-                        Slider(value: $model.settings.breakImageBlurRadius, in: 0...80, step: 1)
+                        Slider(value: $model.settings.breakImageBlurRadius, in: 0...80)
                             .accessibilityLabel("Image blur")
                         Text("Strong").font(.caption).foregroundStyle(.secondary)
                     }

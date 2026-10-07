@@ -78,7 +78,7 @@ when Reduce Motion is enabled.
 Desktop blur is the default background; removed landscape themes migrate to it.
 Legacy wallpaper preferences migrate to Image. Legacy User Image preferences
 migrate to Image with zero blur to preserve their sharp appearance. Image applies
-a saved blur radius from 0–80 points, defaulting to 32; zero keeps the image sharp.
+a saved blur radius from 0–80 points, defaulting to 0; zero keeps the image sharp.
 It does not read system wallpaper or capture the screen.
 The native image picker validates images with AppKit and atomically saves a local
 copy in the app's Application Support directory. The settings store its path and
@@ -103,8 +103,9 @@ when their feature is off.
 Numeric rows use native `LabeledContent` for label alignment.
 Appearance contains native segmented controls for Mode (System/Light/Dark) and
 Background (Blur Desktop/Image), plus the message and preview.
-Image shows choose/change image controls and a native slider that updates the blur
-live and saves the selected amount.
+Image shows choose/change image controls and a continuous native slider without
+tick marks that updates the blur live and saves the selected amount. The zero
+endpoint is labeled None.
 Keyboard Shortcuts lists the app's
 commands in their own grouped forms. About shows the app identity, version from
 the bundle, a short description, and a native link to the OpenAway GitHub repository.
