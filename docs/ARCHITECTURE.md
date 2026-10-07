@@ -78,7 +78,7 @@ when Reduce Motion is enabled.
 Desktop blur is the default background; removed landscape themes migrate to it.
 Legacy wallpaper preferences migrate to Image. Legacy User Image preferences
 migrate to Image with zero blur to preserve their sharp appearance. Image applies
-a saved blur radius from 0–80 points, defaulting to 32; zero keeps the image sharp.
+a saved blur radius from 0–80 points, defaulting to 0; zero keeps the image sharp.
 It does not read system wallpaper or capture the screen.
 The native image picker validates images with AppKit and atomically saves a local
 copy in the app's Application Support directory. The settings store its path and
@@ -90,9 +90,9 @@ Removing a picture or resetting settings clears the cached image and local copy.
 The dashboard uses `NSSplitViewController` with a full-height sidebar
 `NSSplitViewItem`, compact settings groups, and Swift Charts. AppKit owns the
 sidebar material, rounded glass on macOS 26+, and native window-control layout.
-The compact sidebar uses a native SwiftUI `List(selection:)` with `.sidebar`
+The 200-point sidebar uses a native SwiftUI `List(selection:)` with `.sidebar`
 style for General, Wellness Reminders, Appearance, Keyboard Shortcuts, Activity,
-and About. General is the startup and default page.
+and About, with single-line labels. General is the startup and default page.
 Standard `Label` controls use SF Symbols with system icon sizing and row spacing;
 macOS owns selection highlighting, keyboard navigation, and row insets. General
 contains routine and application preferences in a native grouped `Form`, with all
@@ -103,8 +103,9 @@ when their feature is off.
 Numeric rows use native `LabeledContent` for label alignment.
 Appearance contains native segmented controls for Mode (System/Light/Dark) and
 Background (Blur Desktop/Image), plus the message and preview.
-Image shows choose/change image controls and a native slider that updates the blur
-live and saves the selected amount.
+Image shows choose/change image controls and a continuous native slider without
+tick marks that updates the blur live and saves the selected amount. The zero
+endpoint is labeled None.
 Keyboard Shortcuts lists the app's
 commands in their own grouped forms. About shows the app identity, version from
 the bundle, a short description, and a native link to the OpenAway GitHub repository.
@@ -114,8 +115,12 @@ Recent breaks shows the latest eight records with aligned duration and status.
 Totals count completed breaks, while recent history also includes breaks ended
 early. The final form group contains Clear History…, which requires destructive
 confirmation and is disabled when history is empty.
-The default window expands to
-1200 by 900 points, bounded by the screen's available area. The selected sidebar
+The window opens at 740 points wide, with a default
+height of up to 900 points, bounded by the screen's available area. Restored windows
+use the same opening width while keeping their saved position and height. Native
+resizing remains available, with a 740-point minimum window width and a 522-point
+minimum detail width.
+The selected sidebar
 row identifies the current section without a repeated header in the detail pane.
 The sidebar, settings pages, and Activity remain scrollable; compact About centers
 its content in the full detail pane. General and Activity use the system scroll

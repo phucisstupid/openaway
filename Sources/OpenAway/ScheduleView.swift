@@ -44,7 +44,7 @@ struct ScheduleView: View {
 
     private var longBreaks: some View {
         Section("Long breaks") {
-            Toggle("Enable long break", isOn: $model.settings.longBreakEnabled)
+            Toggle("Enable long breaks", isOn: $model.settings.longBreakEnabled)
             NumberPreference(title: "Take a long break after", value: $model.settings.longBreakEvery, range: 1...12, unit: "eye breaks")
                 .disabled(!model.settings.longBreakEnabled)
             NumberPreference(title: "Long break duration", value: $model.settings.longBreakDurationMinutes, range: 1...60)
