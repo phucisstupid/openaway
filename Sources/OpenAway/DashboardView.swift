@@ -8,7 +8,7 @@ struct DashboardView: View {
         ("appearance", "Appearance", "circle.lefthalf.filled"),
         ("shortcuts", "Keyboard Shortcuts", "keyboard"),
         ("insights", "Activity", "chart.bar"),
-        ("about", "About", "info.circle")
+        ("about", "About", "info.circle"),
     ]
     var body: some View {
         Group {
@@ -25,7 +25,8 @@ struct DashboardView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(nsColor: .windowBackgroundColor))
         .ignoresSafeArea(.container, edges: .top)
-        .preferredColorScheme(model.settings.appearance == "dark" ? .dark : model.settings.appearance == "light" ? .light : nil)
+        .preferredColorScheme(
+            model.settings.appearance == "dark" ? .dark : model.settings.appearance == "light" ? .light : nil)
     }
 
 }

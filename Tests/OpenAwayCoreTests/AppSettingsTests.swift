@@ -1,5 +1,6 @@
 import Foundation
 import XCTest
+
 @testable import OpenAwayCore
 
 final class AppSettingsTests: XCTestCase {
@@ -75,7 +76,8 @@ final class AppSettingsTests: XCTestCase {
         let encoded = try JSONEncoder().encode(settings)
         XCTAssertEqual(try JSONDecoder().decode(AppSettings.self, from: encoded), settings)
 
-        let record = BreakRecord(date: Date(timeIntervalSince1970: 100), durationSeconds: 20, kind: .short, completed: true)
+        let record = BreakRecord(
+            date: Date(timeIntervalSince1970: 100), durationSeconds: 20, kind: .short, completed: true)
         let history = try JSONEncoder().encode([record])
         XCTAssertEqual(try JSONDecoder().decode([BreakRecord].self, from: history), [record])
     }
@@ -91,7 +93,9 @@ final class AppSettingsTests: XCTestCase {
     }
 
     func testLegacyPictureThemeKeepsImageAndSharpAppearance() throws {
-        let data = Data(#"{"breakTheme":"picture","breakImagePath":"/Users/example/Library/Application Support/OpenAway/BreakImage.jpg","breakImageName":"Mountain.jpg","breakImageBlurRadius":48}"#.utf8)
+        let data = Data(
+            #"{"breakTheme":"picture","breakImagePath":"/Users/example/Library/Application Support/OpenAway/BreakImage.jpg","breakImageName":"Mountain.jpg","breakImageBlurRadius":48}"#
+                .utf8)
         let settings = try JSONDecoder().decode(AppSettings.self, from: data)
         XCTAssertEqual(settings.breakTheme, "blurImage")
         XCTAssertEqual(settings.breakImageBlurRadius, 0)
@@ -120,8 +124,10 @@ final class AppSettingsTests: XCTestCase {
     }
 
     func testImageBlurRadiusClampsAndRejectsNonfiniteValues() {
-        for (input, expected) in [(-1.0, 0.0), (81.0, 80.0), (0.0, 0.0), (80.0, 80.0),
-                                  (Double.nan, 32.0), (Double.infinity, 32.0), (-Double.infinity, 32.0)] {
+        for (input, expected) in [
+            (-1.0, 0.0), (81.0, 80.0), (0.0, 0.0), (80.0, 80.0),
+            (Double.nan, 32.0), (Double.infinity, 32.0), (-Double.infinity, 32.0),
+        ] {
             var settings = AppSettings()
             settings.breakImageBlurRadius = input
             settings.normalize()

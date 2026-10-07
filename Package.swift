@@ -8,6 +8,6 @@ let package = Package(
     targets: [
         .target(name: "OpenAwayCore"),
         .executableTarget(name: "OpenAway", dependencies: ["OpenAwayCore"]),
-        .testTarget(name: "OpenAwayCoreTests", dependencies: ["OpenAwayCore"])
+        .testTarget(name: "OpenAwayCoreTests", dependencies: ["OpenAwayCore"]),
     ]
 )

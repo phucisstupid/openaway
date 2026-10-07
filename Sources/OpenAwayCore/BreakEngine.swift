@@ -101,8 +101,7 @@ public struct BreakEngine: Sendable {
             if remainingInterval <= 0 {
                 let record = makeRecord(now: now, completed: true)
                 completedBreaks += 1
-                if currentBreakKind == .short { shortBreaksSinceLong += 1 }
-                else { shortBreaksSinceLong = 0 }
+                if currentBreakKind == .short { shortBreaksSinceLong += 1 } else { shortBreaksSinceLong = 0 }
                 beginFocus(now: now)
                 return [.breakFinished(record)]
             }
@@ -124,7 +123,9 @@ public struct BreakEngine: Sendable {
         if effectivePhase == .resting {
             if currentBreakKind == .short, oldSettings.breakDurationSeconds != normalized.breakDurationSeconds {
                 newDuration = TimeInterval(normalized.breakDurationSeconds)
-            } else if currentBreakKind == .long, oldSettings.longBreakDurationMinutes != normalized.longBreakDurationMinutes {
+            } else if currentBreakKind == .long,
+                oldSettings.longBreakDurationMinutes != normalized.longBreakDurationMinutes
+            {
                 newDuration = TimeInterval(normalized.longBreakDurationMinutes * 60)
             }
         } else {
@@ -136,14 +137,12 @@ public struct BreakEngine: Sendable {
         if let newDuration {
             timerDuration = newDuration
             let remaining = max(0, newDuration - elapsed)
-            if phase == .paused { suspendedRemaining = remaining }
-            else { deadline = now.addingTimeInterval(remaining) }
+            if phase == .paused { suspendedRemaining = remaining } else { deadline = now.addingTimeInterval(remaining) }
         }
         if effectivePhase == .preparing, remainingInterval > TimeInterval(Self.headsUpSeconds) {
             // A longer interval can move an already announced break back into focus.
             // Re-arm the heads-up so it is announced at the new deadline as well.
-            if phase == .paused { suspendedPhase = .focusing }
-            else { phase = .focusing }
+            if phase == .paused { suspendedPhase = .focusing } else { phase = .focusing }
             hasSentHeadsUp = false
         }
     }
@@ -182,7 +181,8 @@ public struct BreakEngine: Sendable {
 
     public mutating func skipBreak(now: Date) -> [EngineEvent] {
         observedTime = now
-        let events: [EngineEvent] = effectivePhase == .resting
+        let events: [EngineEvent] =
+            effectivePhase == .resting
             ? [.breakFinished(makeRecord(now: now, completed: false))] : []
         beginFocus(now: now)
         return events
@@ -204,7 +204,8 @@ public struct BreakEngine: Sendable {
         observedTime = now
         guard phase == .paused else { return [] }
         if reset {
-            let events: [EngineEvent] = effectivePhase == .resting
+            let events: [EngineEvent] =
+                effectivePhase == .resting
                 ? [.breakFinished(makeRecord(now: now, completed: false))] : []
             beginFocus(now: now)
             return events
@@ -222,7 +223,8 @@ public struct BreakEngine: Sendable {
         phase = .resting
         currentBreakKind = kind
         observedTime = now
-        timerDuration = kind == .short
+        timerDuration =
+            kind == .short
             ? TimeInterval(settings.breakDurationSeconds)
             : TimeInterval(settings.longBreakDurationMinutes * 60)
         deadline = now.addingTimeInterval(timerDuration)

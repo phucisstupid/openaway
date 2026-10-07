@@ -65,6 +65,27 @@ its test bodies come from the XCTest source files.
 
 ## Verify relevant changes
 
+Swift formatting and style checks use the toolchain's `swift-format` and the
+tracked `.swift-format` configuration. Format explicitly before staging:
+
+```sh
+xcrun swift-format format --in-place --recursive Package.swift Sources Tests scripts/make-icon.swift
+xcrun swift-format lint --strict --recursive Package.swift Sources Tests scripts/make-icon.swift
+```
+
+Enable the optional native commit hook once per clone:
+
+```sh
+git config --local core.hooksPath .githooks
+```
+
+The hook lints staged Swift content using the staged configuration, preserving
+partial staging without modifying files or the index. Stage `.swift-format` with
+its initial formatting pass. Configuration changes check all tracked Swift files
+in the index. Verify hook behavior with `./scripts/test-hooks.sh`.
+CI runs strict lint and the hook checks on `macos-26`; use the same Swift toolchain
+locally for consistent formatting. Hooks are optional; CI enforces the check.
+
 With full Xcode, run `swift test`. With Command Line Tools only:
 
 ```sh
@@ -94,6 +115,12 @@ after a version tag is pushed, or by manually dispatching it for an existing tag
 For releases, keep the app version, tag, asset filename, and cask version/checksum
 consistent. Verify the ZIP after extracting it into a clean temporary directory;
 Finder metadata on the app copied into a synced folder can affect signature checks.
+
+Every release must have a minimal, human-readable changelog in its annotated tag
+notes. Use one to three short bullets describing user-visible improvements since
+the previous release. Prefer plain language; omit implementation details, internal
+tooling, commit hashes, and test logs. The workflow publishes these notes as the
+GitHub release changelog, followed by the standard download and installation notes.
 
 1. Update `CFBundleShortVersionString` in `Resources/Info.plist`, verify, commit,
    and push the changes.

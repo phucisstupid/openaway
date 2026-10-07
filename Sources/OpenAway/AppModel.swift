@@ -15,7 +15,12 @@ final class AppModel: ObservableObject {
         didSet { settingsDidChange(oldValue: oldValue) }
     }
     @Published private(set) var engine: BreakEngine
-    @Published private(set) var records: [BreakRecord]
+    @Published private(set) var records: [BreakRecord] {
+        didSet {
+            completedDays = nil
+            recentRecords = nil
+        }
+    }
     @Published var selectedPage = "general"
     @Published var reminderText: String?
     @Published private(set) var reminderKind: ReminderKind = .posture
@@ -46,18 +51,29 @@ final class AppModel: ObservableObject {
     private var postureElapsed: TimeInterval = 0
     private var reminderExpiresAt: Date?
     private var escapeExpiresAt: Date?
+    private var completedDays: [Date: (count: Int, seconds: Int)]?
+    private var historyCalendar: Calendar?
+    private var recentRecords: [BreakRecord]?
+    private var activityCalendar = Calendar.current
+    private var activityDay = Date.distantPast
 
     init(defaults: UserDefaults = .standard, persists: Bool = true, breakImageDirectory: URL? = nil) {
         self.defaults = defaults
         self.persists = persists
-        self.breakImageDirectory = breakImageDirectory ?? (persists
-            ? FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-                .appendingPathComponent("org.openaway.OpenAway", isDirectory: true)
-            : FileManager.default.temporaryDirectory.appendingPathComponent("OpenAway-\(UUID().uuidString)", isDirectory: true))
-        var restored = persists ? Self.decode(AppSettings.self, key: "settings.v1", defaults: defaults) ?? AppSettings() : AppSettings()
+        self.breakImageDirectory =
+            breakImageDirectory
+            ?? (persists
+                ? FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+                    .appendingPathComponent("org.openaway.OpenAway", isDirectory: true)
+                : FileManager.default.temporaryDirectory.appendingPathComponent(
+                    "OpenAway-\(UUID().uuidString)", isDirectory: true))
+        var restored =
+            persists
+            ? Self.decode(AppSettings.self, key: "settings.v1", defaults: defaults) ?? AppSettings() : AppSettings()
         restored.normalize()
         if persists {
-            restored.launchAtLogin = SMAppService.mainApp.status == .enabled || SMAppService.mainApp.status == .requiresApproval
+            restored.launchAtLogin =
+                SMAppService.mainApp.status == .enabled || SMAppService.mainApp.status == .requiresApproval
         }
         settings = restored
         engine = BreakEngine(settings: restored)
@@ -78,19 +94,40 @@ final class AppModel: ObservableObject {
         pulse()
     }
 
-    func stop() { timer?.invalidate(); timer = nil }
+    func stop() {
+        timer?.invalidate()
+        timer = nil
+    }
 
-    var todayRecords: [BreakRecord] { records.filter { Calendar.current.isDateInToday($0.date) } }
     var isShowingHeadsUp: Bool { engine.phase == .preparing && !isPreviewing }
-    var completedToday: Int { todayRecords.filter(\.completed).count }
-    var restedTodaySeconds: Int { todayRecords.filter(\.completed).reduce(0) { $0 + $1.durationSeconds } }
+    var completedToday: Int { completedCount(on: Date()) }
+    var restedTodaySeconds: Int { completedHistory[Calendar.current.startOfDay(for: Date())]?.seconds ?? 0 }
+    var recentBreaks: [BreakRecord] {
+        if recentRecords == nil { recentRecords = Array(records.sorted { $0.date > $1.date }.prefix(8)) }
+        return recentRecords ?? []
+    }
+    func completedCount(on date: Date) -> Int { completedHistory[Calendar.current.startOfDay(for: date)]?.count ?? 0 }
+
+    private var completedHistory: [Date: (count: Int, seconds: Int)] {
+        let calendar = Calendar.current
+        if completedDays == nil || historyCalendar != calendar {
+            completedDays = records.reduce(into: [:]) { days, record in
+                guard record.completed else { return }
+                let day = calendar.startOfDay(for: record.date)
+                days[day, default: (0, 0)].count += 1
+                days[day, default: (0, 0)].seconds += record.durationSeconds
+            }
+            historyCalendar = calendar
+        }
+        return completedDays ?? [:]
+    }
     var streakDays: Int {
         let calendar = Calendar.current
-        let dates = Set(records.filter(\.completed).map { calendar.startOfDay(for: $0.date) })
+        let dates = completedHistory
         var day = calendar.startOfDay(for: Date())
-        if !dates.contains(day), let yesterday = calendar.date(byAdding: .day, value: -1, to: day) { day = yesterday }
+        if dates[day] == nil, let yesterday = calendar.date(byAdding: .day, value: -1, to: day) { day = yesterday }
         var count = 0
-        while dates.contains(day) {
+        while dates[day] != nil {
             count += 1
             guard let previous = calendar.date(byAdding: .day, value: -1, to: day) else { break }
             day = previous
@@ -109,7 +146,10 @@ final class AppModel: ObservableObject {
     }
 
     func snooze(minutes: Int) {
-        if isPreviewing { closePreview(); return }
+        if isPreviewing {
+            closePreview()
+            return
+        }
         // Adding time to a paused focus timer preserves the user's pause intent.
         if engine.phase != .paused || pausedDuringRest {
             manuallyPaused = false
@@ -122,7 +162,10 @@ final class AppModel: ObservableObject {
     }
 
     func skipBreak() {
-        if isPreviewing { closePreview(); return }
+        if isPreviewing {
+            closePreview()
+            return
+        }
         consume(engine.skipBreak(now: Date()))
         dismissReminder()
         refreshPresentation()
@@ -130,7 +173,10 @@ final class AppModel: ObservableObject {
 
     func handleEscape(isRepeat: Bool = false, now: Date = Date()) {
         guard !isRepeat else { return }
-        if isPreviewing { closePreview(); return }
+        if isPreviewing {
+            closePreview()
+            return
+        }
         guard engine.phase == .resting else { return }
         if let expiry = escapeExpiresAt, now < expiry {
             skipBreak()
@@ -164,7 +210,10 @@ final class AppModel: ObservableObject {
         NSApp.keyWindow?.makeFirstResponder(nil)
         settings = AppSettings()
     }
-    func clearHistory() { records = []; persistHistory() }
+    func clearHistory() {
+        records = []
+        persistHistory()
+    }
     func dismissReminder() {
         reminderText = nil
         isReminderPreview = false
@@ -191,9 +240,10 @@ final class AppModel: ObservableObject {
         panel.canChooseDirectories = false
         panel.allowsMultipleSelection = false
         guard panel.runModal() == .OK, let url = panel.url,
-              let id = Bundle(url: url)?.bundleIdentifier,
-              id != Bundle.main.bundleIdentifier,
-              !settings.excludedBundleIDs.contains(id) else { return }
+            let id = Bundle(url: url)?.bundleIdentifier,
+            id != Bundle.main.bundleIdentifier,
+            !settings.excludedBundleIDs.contains(id)
+        else { return }
         settings.excludedBundleIDs.append(id)
     }
 
@@ -241,7 +291,10 @@ final class AppModel: ObservableObject {
 
     func previewBreak() {
         // A preview only changes presentation. The real session continues untouched.
-        guard engine.phase != .resting else { refreshPresentation(); return }
+        guard engine.phase != .resting else {
+            refreshPresentation()
+            return
+        }
         isPreviewing = true
         dismissReminder()
         refreshPresentation()
@@ -255,7 +308,10 @@ final class AppModel: ObservableObject {
 
     func setSleeping(_ value: Bool) {
         isSleeping = value
-        if value { closePreview(); dismissReminder() }
+        if value {
+            closePreview()
+            dismissReminder()
+        }
         lastPulse = Date()
         synchronizePause(now: Date())
         refreshPresentation()
@@ -263,7 +319,10 @@ final class AppModel: ObservableObject {
 
     func setLocked(_ value: Bool) {
         isLocked = value
-        if value { closePreview(); dismissReminder() }
+        if value {
+            closePreview()
+            dismissReminder()
+        }
         lastPulse = Date()
         synchronizePause(now: Date())
         refreshPresentation()
@@ -271,7 +330,10 @@ final class AppModel: ObservableObject {
 
     func setDisplaySleeping(_ value: Bool) {
         isDisplaySleeping = value
-        if value { closePreview(); dismissReminder() }
+        if value {
+            closePreview()
+            dismissReminder()
+        }
         lastPulse = Date()
         synchronizePause(now: Date())
         refreshPresentation()
@@ -287,14 +349,27 @@ final class AppModel: ObservableObject {
         let elapsed = max(0, min(now.timeIntervalSince(lastPulse), 2))
         lastPulse = now
         synchronizePause(now: now, inputIdleSeconds: idle)
-        consume(engine.tick(now: now, allowAutomaticBreak: idle.isFinite && idle >= 3 && !isPreviewing))
+        let calendar = Calendar.current
+        let day = calendar.startOfDay(for: now)
+        if engine.phase != .paused {
+            consume(engine.tick(now: now, allowAutomaticBreak: idle.isFinite && idle >= 3 && !isPreviewing))
+        } else if activityCalendar != calendar || activityDay != day {
+            // Activity totals still roll over while the timer stays paused.
+            objectWillChange.send()
+        }
+        activityCalendar = calendar
+        activityDay = day
         if engine.phase == .focusing && !isReminderPreview {
             blinkElapsed += elapsed
             postureElapsed += elapsed
-            if reminderText == nil && settings.postureReminderEnabled && postureElapsed >= Double(settings.postureIntervalMinutes * 60) {
+            if reminderText == nil && settings.postureReminderEnabled
+                && postureElapsed >= Double(settings.postureIntervalMinutes * 60)
+            {
                 postureElapsed = 0
                 showReminder(.posture, text: "Let your shoulders drop. Sit comfortably.", now: now)
-            } else if reminderText == nil && settings.blinkReminderEnabled && blinkElapsed >= Double(settings.blinkIntervalMinutes * 60) {
+            } else if reminderText == nil && settings.blinkReminderEnabled
+                && blinkElapsed >= Double(settings.blinkIntervalMinutes * 60)
+            {
                 blinkElapsed = 0
                 showReminder(.blink, text: "Close your eyes gently, then open them slowly.", now: now)
             }
@@ -312,7 +387,9 @@ final class AppModel: ObservableObject {
         // A held mouse button also counts as working, even while the pointer is still.
         if [CGMouseButton.left, .right, .center].contains(where: {
             CGEventSource.buttonState(.combinedSessionState, button: $0)
-        }) { return 0 }
+        }) {
+            return 0
+        }
         let anyInput = CGEventType(rawValue: UInt32.max)!
         return CGEventSource.secondsSinceLastEventType(.combinedSessionState, eventType: anyInput)
     }
@@ -325,13 +402,17 @@ final class AppModel: ObservableObject {
         }
         let resting = engine.phase == .resting || (engine.phase == .paused && pausedDuringRest)
         var reason: String?
-        if isSleeping || isDisplaySleeping { reason = "Computer is asleep" }
-        else if isLocked { reason = "Screen is locked" }
-        else if manuallyPaused { reason = manualPauseUntil == nil ? "Paused by you" : "Taking a pause" }
-        else if !resting,
-                let active = NSWorkspace.shared.frontmostApplication,
-                let id = active.bundleIdentifier,
-                settings.excludedBundleIDs.contains(id) {
+        if isSleeping || isDisplaySleeping {
+            reason = "Computer is asleep"
+        } else if isLocked {
+            reason = "Screen is locked"
+        } else if manuallyPaused {
+            reason = manualPauseUntil == nil ? "Paused by you" : "Taking a pause"
+        } else if !resting,
+            let active = NSWorkspace.shared.frontmostApplication,
+            let id = active.bundleIdentifier,
+            settings.excludedBundleIDs.contains(id)
+        {
             reason = "Paused for \(active.localizedName ?? "an excluded app")"
         } else if !resting, let activity = activityMonitor.pauseReason(settings: settings, now: now) {
             reason = activity
@@ -348,8 +429,10 @@ final class AppModel: ObservableObject {
                 dismissReminder()
             }
         } else if engine.phase == .paused {
-            consume(engine.resume(now: now, reset: pausedForIdle && settings.resetAfterIdle && !pausedDuringRest,
-                                  allowAutomaticBreak: idle.isFinite && idle >= 3 && !isPreviewing))
+            consume(
+                engine.resume(
+                    now: now, reset: pausedForIdle && settings.resetAfterIdle && !pausedDuringRest,
+                    allowAutomaticBreak: idle.isFinite && idle >= 3 && !isPreviewing))
             pausedDuringRest = false
             pausedForIdle = false
         }
@@ -409,14 +492,77 @@ final class AppModel: ObservableObject {
             let presentedAt = Date()
             model.previewReminder(kind)
             guard model.reminderStartedAt >= presentedAt, let expiry = model.reminderExpiresAt,
-                  abs(expiry.timeIntervalSince(presentedAt) - 1.5) < 0.1 else { return false }
+                abs(expiry.timeIntervalSince(presentedAt) - 1.5) < 0.1
+            else { return false }
             model.pulse(now: expiry.addingTimeInterval(-0.01), inputIdleSeconds: 0)
             guard model.reminderText != nil, model.isReminderPreview else { return false }
             model.pulse(now: expiry, inputIdleSeconds: 0)
             guard model.reminderText == nil, !model.isReminderPreview,
-                  model.engine.remainingSeconds == remaining, model.records == history else { return false }
+                model.engine.remainingSeconds == remaining, model.records == history
+            else { return false }
         }
         return true
+    }
+
+    static func historySmokeCheck() -> Bool {
+        let model = AppModel(persists: false)
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        guard let yesterday = calendar.date(byAdding: .day, value: -1, to: today),
+            let earlier = calendar.date(byAdding: .day, value: -3, to: today)
+        else { return false }
+        let records: [BreakRecord] = (0..<12).map { index in
+            let day = index < 4 ? today : index < 8 ? yesterday : earlier
+            return BreakRecord(
+                date: day.addingTimeInterval(Double(12 - index)),
+                durationSeconds: 20, kind: .short, completed: index % 4 != 0)
+        }
+        model.records = Array(records.reversed())
+        guard model.completedToday == 3, model.restedTodaySeconds == 60,
+            model.completedCount(on: yesterday) == 3, model.streakDays == 2,
+            model.recentBreaks == Array(model.records.sorted { $0.date > $1.date }.prefix(8))
+        else { return false }
+        // A different calendar must invalidate already populated day buckets.
+        model.historyCalendar = Calendar(identifier: calendar.identifier == .gregorian ? .buddhist : .gregorian)
+        model.completedDays = [:]
+        guard model.completedToday == 3 else { return false }
+        let newest = BreakRecord(date: today.addingTimeInterval(60), durationSeconds: 30, kind: .short, completed: true)
+        model.records.append(newest)
+        guard model.completedToday == 4, model.restedTodaySeconds == 90, model.recentBreaks.first == newest else {
+            return false
+        }
+        model.clearHistory()
+        return model.completedToday == 0 && model.restedTodaySeconds == 0 && model.streakDays == 0
+            && model.recentBreaks.isEmpty
+    }
+
+    static func pausedPulseSmokeCheck() -> Bool {
+        let model = AppModel(persists: false)
+        model.settings.pauseForMeetings = false
+        model.settings.pauseForVideo = false
+        model.settings.idlePauseEnabled = false
+        model.pause(minutes: 1)
+        guard let expiry = model.manualPauseUntil else { return false }
+        let remaining = model.engine.remainingSeconds
+        var publications = 0
+        let subscription = model.$engine.dropFirst().sink { _ in publications += 1 }
+        defer { subscription.cancel() }
+        model.pulse(now: expiry.addingTimeInterval(-1), inputIdleSeconds: 0)
+        model.pulse(now: expiry.addingTimeInterval(-0.5), inputIdleSeconds: 0)
+        guard publications == 0, model.engine.remainingSeconds == remaining else { return false }
+        var updates = 0
+        let activitySubscription = model.objectWillChange.sink { updates += 1 }
+        defer { activitySubscription.cancel() }
+        // Simulate a day/calendar boundary without changing the paused timer.
+        model.activityDay = .distantPast
+        model.pulse(now: expiry.addingTimeInterval(-0.25), inputIdleSeconds: 0)
+        guard updates == 1, publications == 0 else { return false }
+        model.activityCalendar = Calendar(
+            identifier: Calendar.current.identifier == .gregorian ? .buddhist : .gregorian)
+        model.pulse(now: expiry.addingTimeInterval(-0.1), inputIdleSeconds: 0)
+        guard updates == 2, publications == 0 else { return false }
+        model.pulse(now: expiry, inputIdleSeconds: 0)
+        return publications > 0 && model.engine.phase == .focusing && model.engine.remainingSeconds == remaining
     }
 
     static func resetSettingsSmokeCheck() -> Bool {
@@ -434,12 +580,15 @@ final class AppModel: ObservableObject {
     }
 
     static func breakImageSmokeCheck(presentationMatches: (AppModel) -> Bool) -> Bool {
-        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("OpenAway-picture-test-\(UUID().uuidString)")
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(
+            "OpenAway-picture-test-\(UUID().uuidString)")
         let suiteName = "org.openaway.picture-test.\(UUID().uuidString)"
         guard let defaults = UserDefaults(suiteName: suiteName),
-              let bitmap = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: 2, pixelsHigh: 2,
-                                            bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true,
-                                            isPlanar: false, colorSpaceName: .calibratedRGB, bytesPerRow: 0, bitsPerPixel: 0) else { return false }
+            let bitmap = NSBitmapImageRep(
+                bitmapDataPlanes: nil, pixelsWide: 2, pixelsHigh: 2,
+                bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true,
+                isPlanar: false, colorSpaceName: .calibratedRGB, bytesPerRow: 0, bitsPerPixel: 0)
+        else { return false }
         defer {
             try? FileManager.default.removeItem(at: directory)
             defaults.removePersistentDomain(forName: suiteName)
@@ -456,27 +605,35 @@ final class AppModel: ObservableObject {
             let model = AppModel(defaults: defaults, persists: true, breakImageDirectory: storage)
             try model.importBreakImage(from: source)
             guard model.settings.breakTheme == "blurImage", model.breakImage != nil,
-                  model.settings.breakImageName == "Picture.png", let path = model.settings.breakImagePath,
-                  try Data(contentsOf: URL(fileURLWithPath: path)) == data,
-                  presentationMatches(model) else { return false }
+                model.settings.breakImageName == "Picture.png", let path = model.settings.breakImagePath,
+                try Data(contentsOf: URL(fileURLWithPath: path)) == data,
+                presentationMatches(model)
+            else { return false }
             model.settings.breakTheme = "blurImage"
             model.settings.breakImageBlurRadius = 40
             try model.importBreakImage(from: source)
-            guard model.settings.breakTheme == "blurImage", model.settings.breakImageBlurRadius == 40 else { return false }
+            guard model.settings.breakTheme == "blurImage", model.settings.breakImageBlurRadius == 40 else {
+                return false
+            }
             let saved = model.settings
             let invalid = directory.appendingPathComponent("Invalid.png")
             try Data("not an image".utf8).write(to: invalid)
-            do { try model.importBreakImage(from: invalid); return false } catch {}
+            do {
+                try model.importBreakImage(from: invalid)
+                return false
+            } catch {}
             guard model.settings == saved, model.breakImage != nil else { return false }
             try FileManager.default.removeItem(at: source)
             let restored = AppModel(defaults: defaults, persists: true, breakImageDirectory: storage)
             guard restored.breakImage != nil, restored.settings.breakImagePath == path,
-                  restored.settings.breakTheme == "blurImage", restored.settings.breakImageBlurRadius == 40,
-                  presentationMatches(restored) else { return false }
+                restored.settings.breakTheme == "blurImage", restored.settings.breakImageBlurRadius == 40,
+                presentationMatches(restored)
+            else { return false }
             restored.removeBreakImage()
             guard restored.settings.breakTheme == "blur", restored.breakImage == nil,
-                  restored.settings.breakImagePath == nil, restored.settings.breakImageName == nil,
-                  !FileManager.default.fileExists(atPath: path) else { return false }
+                restored.settings.breakImagePath == nil, restored.settings.breakImageName == nil,
+                !FileManager.default.fileExists(atPath: path)
+            else { return false }
             let missing = AppModel(persists: false, breakImageDirectory: storage)
             missing.settings = saved
             guard missing.breakImage == nil else { return false }
@@ -490,12 +647,14 @@ final class AppModel: ObservableObject {
     func countdownSmokeCheck(presentationMatches: () -> Bool) -> Bool {
         stop()
         let now = Date().addingTimeInterval(-30)
-        engine = BreakEngine(settings: settings, now: now.addingTimeInterval(-Double(settings.breakIntervalMinutes * 60)))
+        engine = BreakEngine(
+            settings: settings, now: now.addingTimeInterval(-Double(settings.breakIntervalMinutes * 60)))
         pulse(now: now, inputIdleSeconds: 0)
         guard isShowingHeadsUp, engine.remainingSeconds == 5, presentationMatches() else { return false }
         previewReminder(.blink)
         guard isShowingHeadsUp, isReminderPreview, engine.remainingSeconds == 5, records.isEmpty,
-              presentationMatches() else { return false }
+            presentationMatches()
+        else { return false }
         dismissReminder()
         guard isShowingHeadsUp, presentationMatches() else { return false }
         pulse(now: now.addingTimeInterval(5), inputIdleSeconds: 0)
@@ -515,7 +674,8 @@ final class AppModel: ObservableObject {
         guard isShowingHeadsUp, presentationMatches() else { return false }
         pulse(now: resumedAt.addingTimeInterval(1), inputIdleSeconds: 3)
         guard engine.phase == .resting, engine.remainingSeconds == settings.breakDurationSeconds,
-              presentationMatches() else { return false }
+            presentationMatches()
+        else { return false }
         skipBreak()
         clearHistory()
         return presentationMatches()
@@ -548,7 +708,7 @@ final class AppModel: ObservableObject {
         if oldValue.launchAtLogin != settings.launchAtLogin && persists { updateLoginItem() }
         if persists, let data = try? JSONEncoder().encode(settings) { defaults.set(data, forKey: "settings.v1") }
         synchronizingSettings = false
-        coordinator?.applyAppearance()
+        if oldValue.appearance != settings.appearance { coordinator?.applyAppearance() }
         synchronizePause(now: Date())
         refreshPresentation()
     }
@@ -561,9 +721,12 @@ final class AppModel: ObservableObject {
                 if SMAppService.mainApp.status == .requiresApproval {
                     launchAtLoginError = "Allow OpenAway in System Settings → General → Login Items."
                 }
-            } else { try SMAppService.mainApp.unregister() }
+            } else {
+                try SMAppService.mainApp.unregister()
+            }
         } catch {
-            launchAtLoginError = "Could not update launch at login. Keep OpenAway in Applications and try again. \(error.localizedDescription)"
+            launchAtLoginError =
+                "Could not update launch at login. Keep OpenAway in Applications and try again. \(error.localizedDescription)"
             settings.launchAtLogin = SMAppService.mainApp.status == .enabled
         }
     }

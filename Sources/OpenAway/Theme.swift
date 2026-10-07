@@ -1,5 +1,5 @@
-import SwiftUI
 import AppKit
+import SwiftUI
 
 // SDK 27 also exports a State macro. A type alias explicitly selects the
 // backwards-compatible property wrapper on Command Line Tools without plugins.
@@ -7,7 +7,9 @@ typealias ViewState<Value> = SwiftUI.State<Value>
 
 extension Color {
     init(hex: UInt32) {
-        self.init(.sRGB, red: Double((hex >> 16) & 0xff) / 255, green: Double((hex >> 8) & 0xff) / 255, blue: Double(hex & 0xff) / 255, opacity: 1)
+        self.init(
+            .sRGB, red: Double((hex >> 16) & 0xff) / 255, green: Double((hex >> 8) & 0xff) / 255,
+            blue: Double(hex & 0xff) / 255, opacity: 1)
     }
 }
 
@@ -24,13 +26,13 @@ extension View {
     @ViewBuilder
     func nativeGlass(cornerRadius: CGFloat = 20) -> some View {
         #if compiler(>=6.2)
-        if #available(macOS 26.0, *) {
-            self.glassEffect(.regular, in: RoundedRectangle(cornerRadius: cornerRadius))
-        } else {
-            self.background(.regularMaterial, in: RoundedRectangle(cornerRadius: cornerRadius))
-        }
+            if #available(macOS 26.0, *) {
+                self.glassEffect(.regular, in: RoundedRectangle(cornerRadius: cornerRadius))
+            } else {
+                self.background(.regularMaterial, in: RoundedRectangle(cornerRadius: cornerRadius))
+            }
         #else
-        self.background(.regularMaterial, in: RoundedRectangle(cornerRadius: cornerRadius))
+            self.background(.regularMaterial, in: RoundedRectangle(cornerRadius: cornerRadius))
         #endif
     }
 }
@@ -49,13 +51,13 @@ struct PrimaryButtonStyle: PrimitiveButtonStyle {
     @ViewBuilder
     func makeBody(configuration: Configuration) -> some View {
         #if compiler(>=6.2)
-        if #available(macOS 26.0, *) {
-            Button(configuration).buttonStyle(.glassProminent)
-        } else {
-            Button(configuration).buttonStyle(.borderedProminent)
-        }
+            if #available(macOS 26.0, *) {
+                Button(configuration).buttonStyle(.glassProminent)
+            } else {
+                Button(configuration).buttonStyle(.borderedProminent)
+            }
         #else
-        Button(configuration).buttonStyle(.borderedProminent)
+            Button(configuration).buttonStyle(.borderedProminent)
         #endif
     }
 }
@@ -64,13 +66,13 @@ struct SecondaryButtonStyle: PrimitiveButtonStyle {
     @ViewBuilder
     func makeBody(configuration: Configuration) -> some View {
         #if compiler(>=6.2)
-        if #available(macOS 26.0, *) {
-            Button(configuration).buttonStyle(.glass)
-        } else {
-            Button(configuration).buttonStyle(.bordered)
-        }
+            if #available(macOS 26.0, *) {
+                Button(configuration).buttonStyle(.glass)
+            } else {
+                Button(configuration).buttonStyle(.bordered)
+            }
         #else
-        Button(configuration).buttonStyle(.bordered)
+            Button(configuration).buttonStyle(.bordered)
         #endif
     }
 }
@@ -123,12 +125,12 @@ struct NumberPreference: View {
         }
         .accessibilityElement(children: .contain)
     }
-    private static var formatter: NumberFormatter {
+    private static let formatter: NumberFormatter = {
         let formatter = NumberFormatter()
         formatter.numberStyle = .none
         formatter.allowsFloats = false
         return formatter
-    }
+    }()
 }
 
 func timeString(_ seconds: Int) -> String {
@@ -149,13 +151,15 @@ struct BreakBackgroundView: View {
                         .blur(radius: radius, opaque: true)
                         .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
                 }.clipped()
-                .overlay {
-                    LinearGradient(colors: [.black.opacity(0.45), .black.opacity(0.65)], startPoint: .top, endPoint: .bottom)
-                }
+                    .overlay {
+                        LinearGradient(
+                            colors: [.black.opacity(0.45), .black.opacity(0.65)], startPoint: .top, endPoint: .bottom)
+                    }
             } else {
                 DesktopBlurView()
                     .overlay {
-                        LinearGradient(colors: [.black.opacity(0.12), .black.opacity(0.30)], startPoint: .top, endPoint: .bottom)
+                        LinearGradient(
+                            colors: [.black.opacity(0.12), .black.opacity(0.30)], startPoint: .top, endPoint: .bottom)
                     }
             }
         }

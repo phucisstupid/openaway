@@ -26,8 +26,10 @@ idle time, sound, or persistence.
 
 ## Application model
 
-`AppModel` runs on the main actor. A half-second pulse advances the engine and
-publishes state for the views. It converts system conditions into pause reasons,
+`AppModel` runs on the main actor. A half-second pulse advances active timers and
+publishes state for the views. While paused, it checks for resume conditions and
+reminder expiry without publishing unchanged engine state. Day or calendar changes
+still refresh Activity while paused. It converts system conditions into pause reasons,
 with system/display sleep, screen lock, and manual pause taking priority over
 foreground-app exclusion, meeting/media activity, and idle detection. Idle detection is disabled during
 rest, since looking away is the purpose of a break.
@@ -42,6 +44,11 @@ Settings and bounded history are JSON-encoded into the app's UserDefaults domain
 The launch-at-login setting uses ServiceManagement; failures are exposed in
 General → Application. A preview is independent presentation state and does not alter
 the timer or create activity records.
+
+Completed-break counts and rest durations are grouped by calendar day and cached
+until history or the current calendar changes. Queries use fresh day boundaries,
+so totals still roll over at midnight. The latest eight records are sorted and
+cached until history changes, including history restored out of date order.
 
 ## Native presentation
 

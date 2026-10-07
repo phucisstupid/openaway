@@ -1,5 +1,5 @@
-import SwiftUI
 import AppKit
+import SwiftUI
 
 struct ScheduleView: View {
     @ObservedObject var model: AppModel
@@ -27,14 +27,18 @@ struct ScheduleView: View {
             Button("Cancel", role: .cancel) {}
             Button("Reset to Defaults") { model.resetSettings() }
         } message: {
-            Text("Restore the default routine, appearance, reminders, focus apps, and login preference. Your break history will be kept.")
+            Text(
+                "Restore the default routine, appearance, reminders, focus apps, and login preference. Your break history will be kept."
+            )
         }
     }
 
     private var screenBreaks: some View {
         Section {
             NumberPreference(title: "Show breaks after", value: $model.settings.breakIntervalMinutes, range: 1...180)
-            NumberPreference(title: "Break duration", value: $model.settings.breakDurationSeconds, range: 5...600, unit: "seconds", step: 5)
+            NumberPreference(
+                title: "Break duration", value: $model.settings.breakDurationSeconds, range: 5...600, unit: "seconds",
+                step: 5)
         } header: {
             Text("Breaks")
         } footer: {
@@ -45,10 +49,15 @@ struct ScheduleView: View {
     private var longBreaks: some View {
         Section("Long breaks") {
             Toggle("Include longer breaks", isOn: $model.settings.longBreakEnabled)
-            NumberPreference(title: "Take a long break after", value: $model.settings.longBreakEvery, range: 1...12, unit: "eye breaks")
-                .disabled(!model.settings.longBreakEnabled)
-            NumberPreference(title: "Long break duration", value: $model.settings.longBreakDurationMinutes, range: 1...60)
-                .disabled(!model.settings.longBreakEnabled)
+            NumberPreference(
+                title: "Take a long break after", value: $model.settings.longBreakEvery, range: 1...12,
+                unit: "eye breaks"
+            )
+            .disabled(!model.settings.longBreakEnabled)
+            NumberPreference(
+                title: "Long break duration", value: $model.settings.longBreakDurationMinutes, range: 1...60
+            )
+            .disabled(!model.settings.longBreakEnabled)
         }
     }
 
@@ -76,7 +85,9 @@ struct ScheduleView: View {
         } header: {
             Text("Automatic pauses")
         } footer: {
-            note("Meetings use microphone or camera activity. Video detection uses audio from supported apps and browsers. Muted video can be missed, and browser audio can pause the timer.")
+            note(
+                "Meetings use microphone or camera activity. Video detection uses audio from supported apps and browsers. Muted video can be missed, and browser audio can pause the timer."
+            )
         }
     }
 
@@ -89,12 +100,18 @@ struct ScheduleView: View {
                 HStack {
                     Text(appName(id)).fixedSize(horizontal: false, vertical: true)
                     Spacer()
-                    Button { model.removeExcludedApp(id) } label: { Image(systemName: "minus.circle") }
-                        .buttonStyle(.borderless).help("Remove \(appName(id))")
-                        .accessibilityLabel("Remove \(appName(id))")
+                    Button {
+                        model.removeExcludedApp(id)
+                    } label: {
+                        Image(systemName: "minus.circle")
+                    }
+                    .buttonStyle(.borderless).help("Remove \(appName(id))")
+                    .accessibilityLabel("Remove \(appName(id))")
                 }
             }
-            Button { model.addExcludedApp() } label: {
+            Button {
+                model.addExcludedApp()
+            } label: {
                 Label("Add an app…", systemImage: "plus")
             }
         } header: {
@@ -109,7 +126,8 @@ struct ScheduleView: View {
             .fixedSize(horizontal: false, vertical: true)
     }
     private func appName(_ bundleID: String) -> String {
-        NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID)?.deletingPathExtension().lastPathComponent ?? bundleID
+        NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID)?.deletingPathExtension().lastPathComponent
+            ?? bundleID
     }
 }
 

@@ -1,0 +1,39 @@
+#!/bin/bash
+set -euo pipefail
+
+cd "$(git rev-parse --show-toplevel)"
+files=()
+config_changed=false
+if ! git diff --cached --quiet -- .swift-format; then config_changed=true; fi
+
+if [[ "$config_changed" == true ]]; then
+    while IFS= read -r -d '' file; do files+=("$file"); done < <(git ls-files -z -- '*.swift')
+else
+    while IFS= read -r -d '' file; do files+=("$file"); done < <(git diff --cached --name-only --diff-filter=ACMR -z -- '*.swift')
+fi
+if [[ ${#files[@]} -eq 0 && "$config_changed" == false ]]; then exit 0; fi
+
+if ! formatter=$(xcrun --find swift-format 2>/dev/null); then
+    echo "Swift lint requires swift-format in the selected Xcode or Command Line Tools." >&2
+    exit 1
+fi
+work=$(mktemp -d "${TMPDIR:-/tmp}/openaway-pre-commit.XXXXXX")
+trap 'rm -rf "$work"' EXIT
+if git cat-file -e :.swift-format 2>/dev/null; then
+    git show :.swift-format > "$work/.swift-format"
+else
+    printf '{}\n' > "$work/.swift-format"
+fi
+
+if [[ ${#files[@]} -eq 0 ]]; then
+    "$formatter" lint --strict --configuration "$work/.swift-format" - < /dev/null
+    exit 0
+fi
+status=0
+for file in "${files[@]}"; do
+    git show ":$file" | "$formatter" lint --strict --configuration "$work/.swift-format" --assume-filename="$file" - || status=1
+done
+if [[ "$status" -ne 0 ]]; then
+    echo "Swift lint failed for staged content. Format explicitly, then restage only the changes you intend to commit." >&2
+fi
+exit "$status"

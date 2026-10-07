@@ -20,18 +20,28 @@ struct ExperienceView: View {
                             .accessibilityHidden(true)
                     }
                     VStack(alignment: .leading, spacing: 8) {
-                        Text(model.breakImage == nil
-                             ? (model.settings.breakImagePath == nil ? "No picture selected" : "Picture unavailable")
-                             : model.settings.breakImageName ?? "Your picture")
-                            .foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle)
-                        Button { model.chooseBreakImage() } label: {
-                            Label(model.breakImage == nil ? "Choose picture…" : "Change picture…", systemImage: "photo.badge.plus")
+                        Text(
+                            model.breakImage == nil
+                                ? (model.settings.breakImagePath == nil ? "No picture selected" : "Picture unavailable")
+                                : model.settings.breakImageName ?? "Your picture"
+                        )
+                        .foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle)
+                        Button {
+                            model.chooseBreakImage()
+                        } label: {
+                            Label(
+                                model.breakImage == nil ? "Choose picture…" : "Change picture…",
+                                systemImage: "photo.badge.plus")
                         }
                     }
                     Spacer()
                     if model.settings.breakImagePath != nil {
-                        Button { model.removeBreakImage() } label: { Image(systemName: "xmark.circle") }
-                            .help("Remove picture").accessibilityLabel("Remove picture")
+                        Button {
+                            model.removeBreakImage()
+                        } label: {
+                            Image(systemName: "xmark.circle")
+                        }
+                        .help("Remove picture").accessibilityLabel("Remove picture")
                     }
                 }
                 if model.breakImage == nil {
@@ -58,7 +68,10 @@ struct ExperienceView: View {
                 .onChange(of: messageFocused) { focused in if !focused { saveMessage() } }
             HStack {
                 Spacer()
-                Button { saveMessage(); model.previewBreak() } label: {
+                Button {
+                    saveMessage()
+                    model.previewBreak()
+                } label: {
                     Label("Preview break", systemImage: "play")
                 }
             }

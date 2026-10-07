@@ -17,6 +17,12 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7
+      - name: Lint Swift
+        if: matrix.os == 'macos-26'
+        run: xcrun swift-format lint --strict --recursive Package.swift Sources Tests scripts/make-icon.swift
+      - name: Test staged Swift hook
+        if: matrix.os == 'macos-26'
+        run: ./scripts/test-hooks.sh
       - name: Test release and cask automation
         run: |
           ruby scripts/test-cask.rb

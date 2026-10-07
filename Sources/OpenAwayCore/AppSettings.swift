@@ -60,34 +60,45 @@ public struct AppSettings: Codable, Equatable, Sendable {
         case pauseForMeetings, pauseForVideo
         case resetAfterIdle, soundEnabled, blinkReminderEnabled, blinkIntervalMinutes
         case postureReminderEnabled, postureIntervalMinutes, showCountdownInMenuBar
-        case launchAtLogin, appearance, breakTheme, breakImagePath, breakImageName, breakImageBlurRadius, breakMessage, excludedBundleIDs
+        case launchAtLogin, appearance, breakTheme, breakImagePath, breakImageName, breakImageBlurRadius, breakMessage,
+            excludedBundleIDs
     }
 
     public init(from decoder: Decoder) throws {
         self.init()
         let values = try decoder.container(keyedBy: CodingKeys.self)
-        breakIntervalMinutes = try values.decodeIfPresent(Int.self, forKey: .breakIntervalMinutes) ?? breakIntervalMinutes
-        breakDurationSeconds = try values.decodeIfPresent(Int.self, forKey: .breakDurationSeconds) ?? breakDurationSeconds
+        breakIntervalMinutes =
+            try values.decodeIfPresent(Int.self, forKey: .breakIntervalMinutes) ?? breakIntervalMinutes
+        breakDurationSeconds =
+            try values.decodeIfPresent(Int.self, forKey: .breakDurationSeconds) ?? breakDurationSeconds
         longBreakEnabled = try values.decodeIfPresent(Bool.self, forKey: .longBreakEnabled) ?? longBreakEnabled
         longBreakEvery = try values.decodeIfPresent(Int.self, forKey: .longBreakEvery) ?? longBreakEvery
-        longBreakDurationMinutes = try values.decodeIfPresent(Int.self, forKey: .longBreakDurationMinutes) ?? longBreakDurationMinutes
+        longBreakDurationMinutes =
+            try values.decodeIfPresent(Int.self, forKey: .longBreakDurationMinutes) ?? longBreakDurationMinutes
         idlePauseEnabled = try values.decodeIfPresent(Bool.self, forKey: .idlePauseEnabled) ?? idlePauseEnabled
         pauseForMeetings = try values.decodeIfPresent(Bool.self, forKey: .pauseForMeetings) ?? pauseForMeetings
         pauseForVideo = try values.decodeIfPresent(Bool.self, forKey: .pauseForVideo) ?? pauseForVideo
-        idleThresholdMinutes = try values.decodeIfPresent(Int.self, forKey: .idleThresholdMinutes) ?? idleThresholdMinutes
+        idleThresholdMinutes =
+            try values.decodeIfPresent(Int.self, forKey: .idleThresholdMinutes) ?? idleThresholdMinutes
         resetAfterIdle = try values.decodeIfPresent(Bool.self, forKey: .resetAfterIdle) ?? resetAfterIdle
         soundEnabled = try values.decodeIfPresent(Bool.self, forKey: .soundEnabled) ?? soundEnabled
-        blinkReminderEnabled = try values.decodeIfPresent(Bool.self, forKey: .blinkReminderEnabled) ?? blinkReminderEnabled
-        blinkIntervalMinutes = try values.decodeIfPresent(Int.self, forKey: .blinkIntervalMinutes) ?? blinkIntervalMinutes
-        postureReminderEnabled = try values.decodeIfPresent(Bool.self, forKey: .postureReminderEnabled) ?? postureReminderEnabled
-        postureIntervalMinutes = try values.decodeIfPresent(Int.self, forKey: .postureIntervalMinutes) ?? postureIntervalMinutes
-        showCountdownInMenuBar = try values.decodeIfPresent(Bool.self, forKey: .showCountdownInMenuBar) ?? showCountdownInMenuBar
+        blinkReminderEnabled =
+            try values.decodeIfPresent(Bool.self, forKey: .blinkReminderEnabled) ?? blinkReminderEnabled
+        blinkIntervalMinutes =
+            try values.decodeIfPresent(Int.self, forKey: .blinkIntervalMinutes) ?? blinkIntervalMinutes
+        postureReminderEnabled =
+            try values.decodeIfPresent(Bool.self, forKey: .postureReminderEnabled) ?? postureReminderEnabled
+        postureIntervalMinutes =
+            try values.decodeIfPresent(Int.self, forKey: .postureIntervalMinutes) ?? postureIntervalMinutes
+        showCountdownInMenuBar =
+            try values.decodeIfPresent(Bool.self, forKey: .showCountdownInMenuBar) ?? showCountdownInMenuBar
         launchAtLogin = try values.decodeIfPresent(Bool.self, forKey: .launchAtLogin) ?? launchAtLogin
         appearance = try values.decodeIfPresent(String.self, forKey: .appearance) ?? appearance
         breakTheme = try values.decodeIfPresent(String.self, forKey: .breakTheme) ?? breakTheme
         breakImagePath = try values.decodeIfPresent(String.self, forKey: .breakImagePath)
         breakImageName = try values.decodeIfPresent(String.self, forKey: .breakImageName)
-        breakImageBlurRadius = try values.decodeIfPresent(Double.self, forKey: .breakImageBlurRadius) ?? breakImageBlurRadius
+        breakImageBlurRadius =
+            try values.decodeIfPresent(Double.self, forKey: .breakImageBlurRadius) ?? breakImageBlurRadius
         breakMessage = try values.decodeIfPresent(String.self, forKey: .breakMessage) ?? breakMessage
         excludedBundleIDs = try values.decodeIfPresent([String].self, forKey: .excludedBundleIDs) ?? excludedBundleIDs
         normalize()

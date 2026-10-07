@@ -1,5 +1,6 @@
 import Foundation
 import XCTest
+
 @testable import OpenAwayCore
 
 final class BreakEngineTests: XCTestCase {
@@ -15,7 +16,9 @@ final class BreakEngineTests: XCTestCase {
         return BreakEngine(settings: settings, now: origin)
     }
 
-    private func finishedRecord(_ events: [EngineEvent], file: StaticString = #filePath, line: UInt = #line) throws -> BreakRecord {
+    private func finishedRecord(_ events: [EngineEvent], file: StaticString = #filePath, line: UInt = #line) throws
+        -> BreakRecord
+    {
         XCTAssertEqual(events.count, 1, file: file, line: line)
         guard case .breakFinished(let record) = events.first else {
             XCTFail("Expected a finished break record", file: file, line: line)
