@@ -1,5 +1,6 @@
 import AppKit
 import OpenAwayCore
+import QuartzCore
 import SwiftUI
 
 @MainActor
@@ -16,7 +17,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     private var screenSignature = ""
     private var rebuildingWindows = false
     private var smokeTesting = false
-    private var animateReminders = true
+    private var animateTransitions = true
     private var reminderPresented = false
     private var reminderAnimation = 0
     private var reminderShowsHeadsUp: Bool?
@@ -26,7 +27,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         let smoke = ProcessInfo.processInfo.arguments.contains("--smoke-test")
         let interactiveSmoke = smoke && ProcessInfo.processInfo.arguments.contains("--interactive")
         smokeTesting = smoke
-        animateReminders = !smoke || interactiveSmoke
+        animateTransitions = !smoke || interactiveSmoke
         model = AppModel(persists: !smoke)
         model.coordinator = self
         if smoke {
@@ -150,6 +151,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
             window.hasShadow = false
             window.backgroundColor = .clear
             window.isReleasedWhenClosed = false
+            window.alphaValue = animateTransitions ? 0 : 1
             window.contentView = NSHostingView(rootView: BreakOverlayView(model: model))
             window.onEscape = { [weak self] isRepeat in self?.model.handleEscape(isRepeat: isRepeat) }
             window.setFrame(screen.frame, display: true)
@@ -158,6 +160,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         }
         breakWindows.first?.makeKey()
         NSApp.activate(ignoringOtherApps: true)
+        if animateTransitions {
+            NSAnimationContext.runAnimationGroup { context in
+                context.duration = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion ? 0.12 : 0.55
+                context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+                breakWindows.forEach { $0.animator().alphaValue = 1 }
+            }
+        }
     }
 
     private func closeBreakWindows(restoreApplication: Bool) {
@@ -185,7 +194,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         guard shouldShow else {
             guard let panel = reminderPanel else { return }
             // Automatic pauses and breaks suppress the HUD immediately.
-            if !mayPresent || !animateReminders { panel.orderOut(nil); return }
+            if !mayPresent || !animateTransitions { panel.orderOut(nil); return }
             NSAnimationContext.runAnimationGroup { context in
                 context.duration = reduceMotion ? 0.12 : 0.25
                 panel.animator().alphaValue = 0
@@ -215,11 +224,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         guard let panel = reminderPanel else { return }
         sizeReminderPanel(panel)
         guard let destination = reminderOrigin(for: panel) else { return }
-        panel.setFrameOrigin(NSPoint(x: destination.x, y: destination.y + (reduceMotion || !animateReminders ? 0 : 12)))
-        panel.alphaValue = animateReminders ? 0 : 1
+        panel.setFrameOrigin(NSPoint(x: destination.x, y: destination.y + (reduceMotion || !animateTransitions ? 0 : 12)))
+        panel.alphaValue = animateTransitions ? 0 : 1
         panel.orderFrontRegardless()
         NSAnimationContext.runAnimationGroup { context in
-            context.duration = animateReminders ? (reduceMotion ? 0.12 : 0.3) : 0
+            context.duration = animateTransitions ? (reduceMotion ? 0.12 : 0.3) : 0
             panel.animator().alphaValue = 1
             panel.animator().setFrameOrigin(destination)
         }
@@ -610,10 +619,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
                 check(model.reminderText == nil && !model.isReminderPreview && reminderPanel?.isVisible != true
                       && model.engine.remainingSeconds == pausedTimer && model.records == previewHistory,
                       "live posture preview expires after 1.5 seconds without changing timer or history")
-                if failures.isEmpty { print("OpenAway platform smoke test passed (\(NSScreen.screens.count) display(s)).") }
-                else { fputs("OpenAway platform smoke test FAILED: \(failures.joined(separator: ", "))\n", stderr) }
-                model.stop()
-                if failures.isEmpty { NSApp.terminate(nil) } else { exit(1) }
+                animateTransitions = true
+                model.previewBreak()
+                (breakWindows.first as? BreakWindow)?.cancelOperation(nil)
+                check(!model.isPreviewing && breakWindows.isEmpty, "Escape closes a preview during its entrance fade")
+                model.previewBreak()
+                let animatedWindows = breakWindows
+                check(!animatedWindows.isEmpty && animatedWindows.count == NSScreen.screens.count
+                      && animatedWindows.allSatisfy { $0.alphaValue == 0 },
+                      "animated preview starts transparent on every display")
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { [self] in
+                    check(breakWindows.count == animatedWindows.count && animatedWindows.allSatisfy { window in
+                        breakWindows.contains { $0 === window } && window.isVisible && abs(window.alphaValue - 1) < 0.01
+                    }, "break entrance fade reaches full opacity without reopening dismissed windows")
+                    model.handleEscape()
+                    check(!model.isPreviewing && breakWindows.isEmpty
+                          && model.engine.remainingSeconds == pausedTimer && model.records == previewHistory,
+                          "animated preview preserves timer and history")
+                    if failures.isEmpty { print("OpenAway platform smoke test passed (\(NSScreen.screens.count) display(s)).") }
+                    else { fputs("OpenAway platform smoke test FAILED: \(failures.joined(separator: ", "))\n", stderr) }
+                    model.stop()
+                    if failures.isEmpty { NSApp.terminate(nil) } else { exit(1) }
+                }
             }
         }
     }
