@@ -72,6 +72,9 @@ struct BreakOverlayView: View {
 
 struct WellnessReminderView: View {
     @ObservedObject var model: AppModel
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.colorScheme) private var colorScheme
+    @ViewState private var hoveredMinutes: Int?
     private var title: String {
         switch model.reminderKind {
         case .headsUp: return "A little pause is coming."
@@ -106,7 +109,7 @@ struct WellnessReminderView: View {
                     Text(waiting ? "Waiting for a pause" : timeString(model.engine.remainingSeconds))
                         .font(.system(size: 23, weight: .semibold)).monospacedDigit()
                         .accessibilityLabel(waiting ? "Waiting for a pause" : "Break in \(model.engine.remainingSeconds) seconds")
-                    Text(waiting ? "Starts after 5 seconds without typing or mouse activity." : "Almost time. Finish your thought—we’ll wait for a pause.")
+                    Text(waiting ? "Starts after 3 seconds without typing or mouse activity." : "Almost time. Finish your thought—we’ll wait for a pause.")
                         .font(.system(size: 13)).foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -114,15 +117,26 @@ struct WellnessReminderView: View {
             HStack(spacing: 8) {
                 Button("Start now") { model.startBreak(kind: model.engine.currentBreakKind) }
                     .buttonStyle(PrimaryButtonStyle())
+                    .brightness(hoveredMinutes == 0 ? hoverBrightness : 0)
+                    .onHover { if $0 || hoveredMinutes == 0 { hoveredMinutes = $0 ? 0 : nil } }
                 ForEach([1, 5, 15], id: \.self) { minutes in
                     Button("+\(minutes)m") { model.snooze(minutes: minutes) }
                         .buttonStyle(SecondaryButtonStyle())
+                        .brightness(hoveredMinutes == minutes ? hoverBrightness : 0)
+                        .onHover { if $0 || hoveredMinutes == minutes { hoveredMinutes = $0 ? minutes : nil } }
                         .accessibilityLabel("Snooze \(minutes) minutes")
                 }
             }
             .controlSize(.large).breakButtonShape()
+            .animation(reduceMotion ? nil : .easeInOut(duration: 0.12), value: hoveredMinutes)
         }
         .padding(20).frame(width: 460, alignment: .leading).nativeGlass(cornerRadius: 28)
+        .onDisappear { hoveredMinutes = nil }
+    }
+
+    private var hoverBrightness: Double {
+        let dark = model.settings.appearance == "dark" || (model.settings.appearance == "system" && colorScheme == .dark)
+        return dark ? 0.08 : -0.05
     }
 
     private var wellnessReminder: some View {

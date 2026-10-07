@@ -286,7 +286,7 @@ final class AppModel: ObservableObject {
         let elapsed = max(0, min(now.timeIntervalSince(lastPulse), 2))
         lastPulse = now
         synchronizePause(now: now, inputIdleSeconds: idle)
-        consume(engine.tick(now: now, allowAutomaticBreak: idle.isFinite && idle >= 5 && !isPreviewing))
+        consume(engine.tick(now: now, allowAutomaticBreak: idle.isFinite && idle >= 3 && !isPreviewing))
         if engine.phase == .focusing && !isReminderPreview {
             blinkElapsed += elapsed
             postureElapsed += elapsed
@@ -348,7 +348,7 @@ final class AppModel: ObservableObject {
             }
         } else if engine.phase == .paused {
             consume(engine.resume(now: now, reset: pausedForIdle && settings.resetAfterIdle && !pausedDuringRest,
-                                  allowAutomaticBreak: idle.isFinite && idle >= 5 && !isPreviewing))
+                                  allowAutomaticBreak: idle.isFinite && idle >= 3 && !isPreviewing))
             pausedDuringRest = false
             pausedForIdle = false
         }
@@ -478,20 +478,20 @@ final class AppModel: ObservableObject {
         guard isShowingHeadsUp, engine.remainingSeconds == 5, presentationMatches() else { return false }
         pulse(now: now.addingTimeInterval(5), inputIdleSeconds: 0)
         guard isShowingHeadsUp, engine.remainingSeconds == 0, presentationMatches() else { return false }
-        pulse(now: now.addingTimeInterval(20), inputIdleSeconds: 4.9)
+        pulse(now: now.addingTimeInterval(20), inputIdleSeconds: 2.9)
         guard isShowingHeadsUp, records.isEmpty, presentationMatches() else { return false }
         pause(minutes: nil)
         guard !isShowingHeadsUp, presentationMatches() else { return false }
         manuallyPaused = false
         let resumedAt = Date()
-        synchronizePause(now: resumedAt, inputIdleSeconds: 0)
+        synchronizePause(now: resumedAt, inputIdleSeconds: 2.9)
         refreshPresentation()
         guard isShowingHeadsUp, presentationMatches() else { return false }
         previewBreak()
         guard isPreviewing, presentationMatches() else { return false }
         closePreview()
         guard isShowingHeadsUp, presentationMatches() else { return false }
-        pulse(now: resumedAt.addingTimeInterval(1), inputIdleSeconds: 5)
+        pulse(now: resumedAt.addingTimeInterval(1), inputIdleSeconds: 3)
         guard engine.phase == .resting, engine.remainingSeconds == settings.breakDurationSeconds,
               presentationMatches() else { return false }
         skipBreak()

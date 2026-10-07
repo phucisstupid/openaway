@@ -44,7 +44,7 @@ its test bodies come from the XCTest source files.
   Legacy wallpaper preferences migrate to Image; User Image migrates with zero blur.
   Missing images fall back to desktop blur; do not read system wallpaper or capture
   the screen.
-- Scheduled breaks show a full five-second warning, then wait for five seconds
+- Scheduled breaks show a full five-second warning, then wait for three seconds
   without typing or mouse activity. A held mouse button counts as activity.
 - Reminder panels must not take keyboard focus. Blink/posture overlays fade after
   seven seconds and honor Reduce Motion.

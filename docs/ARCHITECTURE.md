@@ -33,7 +33,7 @@ foreground-app exclusion, meeting/media activity, and idle detection. Idle detec
 rest, since looking away is the purpose of a break.
 
 The automatic-break gate uses public CoreGraphics input-idle timing and mouse-button
-state. It requires five seconds without activity and does not install an event tap
+state. It requires three seconds without activity and does not install an event tap
 or read keys. The advance popup is derived from the preparing phase, so it persists
 through activity and returns after pause or preview. Wellness reminders retain their
 separate seven-second expiry.
@@ -59,6 +59,8 @@ sit in the center, with glass actions along the bottom. The top-center reminder 
 the foreground application's typing focus throughout the warning and wait.
 Its SwiftUI content uses an active control appearance so enabled buttons stay
 readable even though the panel does not take focus.
+The warning's native buttons also highlight on hover, with animation disabled
+when Reduce Motion is enabled.
 
 Desktop blur is the default background; removed landscape themes migrate to it.
 Legacy wallpaper preferences migrate to Image. Legacy User Image preferences

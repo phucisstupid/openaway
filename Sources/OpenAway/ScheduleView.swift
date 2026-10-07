@@ -38,7 +38,7 @@ struct ScheduleView: View {
         } header: {
             Text("Breaks")
         } footer: {
-            note("Breaks give you a 5-second heads-up and wait for a pause in typing or mouse activity.")
+            note("Breaks give you a 5-second heads-up and start after 3 seconds without typing or mouse activity.")
         }
     }
 

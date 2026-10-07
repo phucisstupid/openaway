@@ -490,7 +490,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
                 return reminderPanel?.isVisible != true && breakWindows.count == NSScreen.screens.count
             }
             return reminderPanel?.isVisible != true && breakWindows.isEmpty
-        }, "five-second countdown waits for input, preserves focus, and survives pause/preview")
+        }, "five-second warning and three-second idle wait preserve focus and survive pause/preview")
         model.settings.breakTheme = "blur"
         let before = model.engine.remainingSeconds
         model.previewBreak()
