@@ -27,7 +27,7 @@ If macOS blocks it, open **System Settings** > **Privacy & Security** and choose
 
 - Customizable eye breaks, blink and posture reminders.
 - Automatic pauses for idle time, meetings, video playback, and selected apps.
-- Native settings, menu bar controls, and local activity history.
+- Native settings that open centered and remember your window position, menu bar controls, and local activity history.
 
 Preferences and history stay on your Mac.
 OpenAway does not capture screen, keyboard, camera, or microphone content.
