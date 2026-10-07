@@ -18,6 +18,8 @@ brew tap phucisstupid/openaway https://github.com/phucisstupid/openaway
 brew install --cask phucisstupid/openaway/openaway
 ```
 
+Homebrew installs the Apple Silicon build. The DMG supports Apple Silicon and Intel.
+
 OpenAway is ad-hoc signed and not notarized.
 If macOS blocks it, open **System Settings** > **Privacy & Security** and choose **Open Anyway**.
 
@@ -41,6 +43,7 @@ swift test
 ```
 
 With Command Line Tools only, use `./scripts/test-core.sh` instead of `swift test`.
+Run `ruby scripts/test-cask.rb` and `ruby scripts/test-release.rb` to check release automation on macOS.
 Xcode 26 or matching Command Line Tools enables Liquid Glass on macOS 26+; older systems use native materials.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for verification and [ARCHITECTURE.md](docs/ARCHITECTURE.md) for the implementation structure.

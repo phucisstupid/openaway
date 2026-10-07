@@ -17,6 +17,10 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7
+      - name: Test release and cask automation
+        run: |
+          ruby scripts/test-cask.rb
+          ruby scripts/test-release.rb
       - name: Test timer behavior
         run: swift test
       - name: Build native app

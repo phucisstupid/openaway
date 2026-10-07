@@ -124,7 +124,7 @@ login-item approval still need manual validation on supported macOS versions.
 
 ## Releases
 
-`release.yml` verifies the version tag and tests the app on `macos-26`. It uses
+`release.yml` checks out the explicit tag ref, verifies its version, and tests the app on `macos-26`. It uses
 `./scripts/build-app.sh` for a native arm64 build, verifies its architecture and
 signature, and names the archive `OpenAway-macos-arm64.zip`. It then runs the
 same script with `--universal` to produce `OpenAway-macos-universal.zip` and
@@ -142,12 +142,15 @@ Recovery accepts the legacy `OpenAway-macos.zip` name and refuses to overwrite
 either legacy or explicitly named universal DMG assets.
 Local builds continue to produce only the app and ZIP.
 
-A dependent cask job checks out the default branch,
-downloads and verifies the published arm64 ZIP and checksum, and commits the
+A dependent cask job on `macos-26` checks out the default branch,
+downloads the published arm64 ZIP and checksum, and verifies the checksum,
+bundle version, signature, and exact arm64 architecture before committing the
 cask version, checksum, arm64 asset URL, and Apple Silicon architecture requirement
 together using the Actions token. The existing cask stays valid until the first
-arm64 release supplies these assets. It serializes cask updates, skips outdated
-releases and unchanged files, and never force-pushes. A cask-only manual dispatch
+arm64 release supplies these assets. Both release runs and cask updates queue
+pending work instead of replacing it. The cask accepts only published stable
+releases; the updater compares numeric versions to skip downgrades, independently
+of GitHub's Latest marker. It skips unchanged files and never force-pushes. A cask-only manual dispatch
 requires the arm64 assets and can recover a failed update without changing an
-existing release. The updater's focused Ruby checks run before every cask
-synchronization.
+existing release and performs the same bundle verification. The updater and
+offline workflow checks run in branch CI and before every cask synchronization.
