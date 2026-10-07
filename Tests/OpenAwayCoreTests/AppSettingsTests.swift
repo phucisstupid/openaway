@@ -15,7 +15,7 @@ final class AppSettingsTests: XCTestCase {
         XCTAssertEqual(settings.breakTheme, "blur")
         XCTAssertNil(settings.breakImagePath)
         XCTAssertNil(settings.breakImageName)
-        XCTAssertEqual(settings.breakImageBlurRadius, 32)
+        XCTAssertEqual(settings.breakImageBlurRadius, 0)
     }
 
     func testNormalizationSafelyBoundsExtremeInputs() {
@@ -61,7 +61,7 @@ final class AppSettingsTests: XCTestCase {
         XCTAssertEqual(settings.breakTheme, "blur")
         XCTAssertNil(settings.breakImagePath)
         XCTAssertNil(settings.breakImageName)
-        XCTAssertEqual(settings.breakImageBlurRadius, 32)
+        XCTAssertEqual(settings.breakImageBlurRadius, 0)
         XCTAssertTrue(settings.longBreakEnabled)
         XCTAssertTrue(settings.pauseForMeetings)
         XCTAssertTrue(settings.pauseForVideo)
@@ -120,13 +120,13 @@ final class AppSettingsTests: XCTestCase {
         let data = Data(#"{"breakTheme":"wallpaper"}"#.utf8)
         let settings = try JSONDecoder().decode(AppSettings.self, from: data)
         XCTAssertEqual(settings.breakTheme, "blurImage")
-        XCTAssertEqual(settings.breakImageBlurRadius, 32)
+        XCTAssertEqual(settings.breakImageBlurRadius, 0)
     }
 
     func testImageBlurRadiusClampsAndRejectsNonfiniteValues() {
         for (input, expected) in [
             (-1.0, 0.0), (81.0, 80.0), (0.0, 0.0), (80.0, 80.0),
-            (Double.nan, 32.0), (Double.infinity, 32.0), (-Double.infinity, 32.0),
+            (Double.nan, 0.0), (Double.infinity, 0.0), (-Double.infinity, 0.0),
         ] {
             var settings = AppSettings()
             settings.breakImageBlurRadius = input
