@@ -90,9 +90,9 @@ Removing a picture or resetting settings clears the cached image and local copy.
 The dashboard uses `NSSplitViewController` with a full-height sidebar
 `NSSplitViewItem`, compact settings groups, and Swift Charts. AppKit owns the
 sidebar material, rounded glass on macOS 26+, and native window-control layout.
-The compact sidebar uses a native SwiftUI `List(selection:)` with `.sidebar`
+The 200-point sidebar uses a native SwiftUI `List(selection:)` with `.sidebar`
 style for General, Wellness Reminders, Appearance, Keyboard Shortcuts, Activity,
-and About. General is the startup and default page.
+and About, with single-line labels. General is the startup and default page.
 Standard `Label` controls use SF Symbols with system icon sizing and row spacing;
 macOS owns selection highlighting, keyboard navigation, and row insets. General
 contains routine and application preferences in a native grouped `Form`, with all

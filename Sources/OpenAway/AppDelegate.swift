@@ -93,8 +93,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
             controller.splitView.isVertical = true
             controller.splitView.dividerStyle = .thin
             let sidebar = NSSplitViewItem(sidebarWithViewController: NSHostingController(rootView: DashboardSidebarView(model: model)))
-            sidebar.minimumThickness = 217
-            sidebar.maximumThickness = 217
+            sidebar.minimumThickness = 200
+            sidebar.maximumThickness = 200
             sidebar.canCollapse = false
             sidebar.allowsFullHeightLayout = true
             sidebar.titlebarSeparatorStyle = .none
@@ -455,6 +455,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         check(sidebar?.behavior == .sidebar && sidebar?.allowsFullHeightLayout == true,
               "AppKit owns the full-height native sidebar")
         dashboard?.contentView?.layoutSubtreeIfNeeded()
+        check(sidebar?.viewController.view.frame.width == 200, "compact sidebar is 200 points wide")
         check([NSWindow.ButtonType.closeButton, .miniaturizeButton, .zoomButton].allSatisfy { type in
             guard let button = dashboard?.standardWindowButton(type), let view = sidebar?.viewController.view else { return false }
             return view.bounds.contains(view.convert(NSPoint(x: button.bounds.midX, y: button.bounds.midY), from: button))
