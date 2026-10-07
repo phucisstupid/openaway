@@ -114,8 +114,12 @@ Recent breaks shows the latest eight records with aligned duration and status.
 Totals count completed breaks, while recent history also includes breaks ended
 early. The final form group contains Clear History…, which requires destructive
 confirmation and is disabled when history is empty.
-The default window expands to
-1200 by 900 points, bounded by the screen's available area. The selected sidebar
+The window opens at 740 points wide, matching macOS System Settings, with a default
+height of up to 900 points, bounded by the screen's available area. Restored windows
+use the same opening width while keeping their saved position and height. Native
+resizing remains available, with a 740-point minimum window width and a 522-point
+minimum detail width.
+The selected sidebar
 row identifies the current section without a repeated header in the detail pane.
 The sidebar, settings pages, and Activity remain scrollable; compact About centers
 its content in the full detail pane. General and Activity use the system scroll

@@ -73,7 +73,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
 
     func showDashboard() {
         if dashboard == nil {
-            let window = DashboardWindow(contentRect: NSRect(x: 0, y: 0, width: 1080, height: 750),
+            let width: CGFloat = 740
+            let window = DashboardWindow(contentRect: NSRect(x: 0, y: 0, width: width, height: 750),
                                   styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
                                   backing: .buffered, defer: false)
             window.title = "OpenAway"
@@ -84,7 +85,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
             window.toolbar = NSToolbar(identifier: "OpenAwayWindowControls")
             window.toolbarStyle = .unified
             window.isMovableByWindowBackground = true
-            window.minSize = NSSize(width: 850, height: 620)
+            window.minSize = NSSize(width: width, height: 620)
             window.isReleasedWhenClosed = false
             let frameName = "OpenAwayDashboardExpanded"
             if !smokeTesting { window.setFrameAutosaveName(frameName) }
@@ -99,15 +100,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
             sidebar.titlebarSeparatorStyle = .none
             controller.addSplitViewItem(sidebar)
             let detail = NSSplitViewItem(viewController: NSHostingController(rootView: DashboardView(model: model)))
-            detail.minimumThickness = 590
+            detail.minimumThickness = 522
             controller.addSplitViewItem(detail)
             window.contentViewController = controller
             window.delegate = self
             if smokeTesting || !window.setFrameUsingName(frameName) {
                 let visible = (window.screen ?? NSScreen.main)?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1440, height: 960)
-                let size = NSSize(width: min(1200, visible.width - 24), height: min(900, visible.height - 24))
+                let size = NSSize(width: min(width, visible.width - 24), height: min(900, visible.height - 24))
                 window.setFrame(NSRect(x: visible.midX - size.width / 2, y: visible.midY - size.height / 2,
                                        width: size.width, height: size.height), display: false)
+            } else {
+                window.setFrame(NSRect(origin: window.frame.origin,
+                                       size: NSSize(width: width, height: window.frame.height)), display: false)
             }
             dashboard = window
         }
@@ -444,6 +448,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         var failures: [String] = []
         func check(_ value: Bool, _ label: String) { if !value { failures.append(label) } }
         check(dashboard?.isVisible == true, "dashboard visible")
+        check(dashboard?.frame.width == 740, "settings opens at the System Settings width")
         check(dashboard?.titlebarAppearsTransparent == true && dashboard?.titleVisibility == .hidden
               && dashboard?.toolbar?.items.isEmpty == true, "window controls merge into content without toolbar actions")
         let sidebar = (dashboard?.contentViewController as? NSSplitViewController)?.splitViewItems.first
