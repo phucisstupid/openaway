@@ -115,10 +115,7 @@ Totals count completed breaks, while recent history also includes breaks ended
 early. The final form group contains Clear History…, which requires destructive
 confirmation and is disabled when history is empty.
 The default window expands to
-1200 by 900 points, bounded by the screen's available area. It opens centered when
-no frame is saved and restores the user's saved position otherwise. Frame autosaving
-starts after content setup and initial positioning so layout cannot save a temporary
-frame before centering. The selected sidebar
+1200 by 900 points, bounded by the screen's available area. The selected sidebar
 row identifies the current section without a repeated header in the detail pane.
 The sidebar, settings pages, and Activity remain scrollable; compact About centers
 its content in the full detail pane. General and Activity use the system scroll
@@ -138,8 +135,7 @@ installed Command Line Tools do not include XCTest. It fails on any assertion
 or undiscoverable test class; it is not a general-purpose XCTest replacement.
 
 The bundled executable's `--smoke-test` uses transient settings/history and checks
-real dashboard, reminder, and overlay lifecycles, including preview expiry, first-open centering
-with a temporary frame autosave name and position preservation on reopening. It also
+real dashboard, reminder, and overlay lifecycles, including preview expiry. It also
 checks break entrance fades and dismissal during the transition, and simulates
 sleep, lock, and foreground exclusion transitions. ActivityMonitor uses
 passive CoreAudio/AVFoundation metadata; video classification
