@@ -114,7 +114,7 @@ Recent breaks shows the latest eight records with aligned duration and status.
 Totals count completed breaks, while recent history also includes breaks ended
 early. The final form group contains Clear History…, which requires destructive
 confirmation and is disabled when history is empty.
-The window opens at 740 points wide, matching macOS System Settings, with a default
+The window opens at 740 points wide, with a default
 height of up to 900 points, bounded by the screen's available area. Restored windows
 use the same opening width while keeping their saved position and height. Native
 resizing remains available, with a 740-point minimum window width and a 522-point

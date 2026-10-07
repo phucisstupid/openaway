@@ -448,7 +448,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         var failures: [String] = []
         func check(_ value: Bool, _ label: String) { if !value { failures.append(label) } }
         check(dashboard?.isVisible == true, "dashboard visible")
-        check(dashboard?.frame.width == 740, "settings opens at the System Settings width")
+        check(dashboard?.frame.width == 740, "settings opens 740 points wide")
         check(dashboard?.titlebarAppearsTransparent == true && dashboard?.titleVisibility == .hidden
               && dashboard?.toolbar?.items.isEmpty == true, "window controls merge into content without toolbar actions")
         let sidebar = (dashboard?.contentViewController as? NSSplitViewController)?.splitViewItems.first
