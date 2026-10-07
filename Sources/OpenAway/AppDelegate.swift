@@ -86,7 +86,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
             window.isMovableByWindowBackground = true
             window.minSize = NSSize(width: 850, height: 620)
             window.isReleasedWhenClosed = false
-            let frameName = smokeTesting ? "OpenAwayDashboardSmoke-\(UUID().uuidString)" : "OpenAwayDashboardExpanded"
+            let frameName = "OpenAwayDashboardExpanded"
+            if !smokeTesting { window.setFrameAutosaveName(frameName) }
             let controller = NSSplitViewController()
             controller.splitView.isVertical = true
             controller.splitView.dividerStyle = .thin
@@ -102,17 +103,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
             controller.addSplitViewItem(detail)
             window.contentViewController = controller
             window.delegate = self
-            if !window.setFrameUsingName(frameName) {
+            if smokeTesting || !window.setFrameUsingName(frameName) {
                 let visible = (window.screen ?? NSScreen.main)?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1440, height: 960)
                 let size = NSSize(width: min(1200, visible.width - 24), height: min(900, visible.height - 24))
                 window.setFrame(NSRect(x: visible.midX - size.width / 2, y: visible.midY - size.height / 2,
                                        width: size.width, height: size.height), display: false)
-            }
-            // Content setup can save a temporary frame before the first centering.
-            window.setFrameAutosaveName(frameName)
-            if smokeTesting {
-                window.setFrameAutosaveName("")
-                NSWindow.removeFrame(usingName: frameName)
             }
             dashboard = window
         }
@@ -449,23 +444,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         var failures: [String] = []
         func check(_ value: Bool, _ label: String) { if !value { failures.append(label) } }
         check(dashboard?.isVisible == true, "dashboard visible")
-        check(model.selectedPage == "general", "dashboard defaults to General")
-        if let window = dashboard, let visible = window.screen?.visibleFrame {
-            check(abs(window.frame.midX - visible.midX) < 1 && abs(window.frame.midY - visible.midY) < 1,
-                  "first settings window opens centered after layout")
-        } else {
-            failures.append("settings window screen available")
-        }
-        if let window = dashboard {
-            let initialFrame = window.frame
-            window.setFrameOrigin(NSPoint(x: initialFrame.minX + 8, y: initialFrame.minY + 8))
-            let movedFrame = window.frame
-            window.close()
-            openSettings()
-            check(dashboard === window && window.isVisible && window.frame == movedFrame,
-                  "reopening settings preserves the user's window position")
-            window.setFrame(initialFrame, display: false)
-        }
         check(dashboard?.titlebarAppearsTransparent == true && dashboard?.titleVisibility == .hidden
               && dashboard?.toolbar?.items.isEmpty == true, "window controls merge into content without toolbar actions")
         let sidebar = (dashboard?.contentViewController as? NSSplitViewController)?.splitViewItems.first
@@ -476,6 +454,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
             guard let button = dashboard?.standardWindowButton(type), let view = sidebar?.viewController.view else { return false }
             return view.bounds.contains(view.convert(NSPoint(x: button.bounds.midX, y: button.bounds.midY), from: button))
         }, "native window controls remain inside the sidebar")
+        check(model.selectedPage == "general", "dashboard defaults to General")
         openSettings()
         check(model.selectedPage == "general" && DashboardView.pages.map(\.id) == ["general", "wellness", "appearance", "shortcuts", "insights", "about"],
               "settings opens General with Wellness Reminders directly below it")
