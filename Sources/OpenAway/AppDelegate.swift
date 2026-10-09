@@ -333,9 +333,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         case .paused: title = model.engine.pauseReason ?? "Paused"
         case .resting: title = "Enjoy a moment away"
         case .preparing where model.engine.remainingSeconds == 0: title = "Waiting for a pause in your work"
-        default:
-            title =
-                "Next break in \(String(format: "%d:%02d", model.engine.remainingSeconds / 60, model.engine.remainingSeconds % 60))"
+        default: title = "OpenAway"
         }
         let summary = NSMenuItem(title: title, action: nil, keyEquivalent: "")
         summary.isEnabled = false
