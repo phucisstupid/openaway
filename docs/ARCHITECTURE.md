@@ -33,6 +33,7 @@ still refresh Activity while paused. It converts system conditions into pause re
 with system/display sleep, screen lock, and manual pause taking priority over
 foreground-app exclusion, meeting/media activity, and idle detection. Idle detection is disabled during
 rest, since looking away is the purpose of a break.
+Foreground-app exclusion queries run only when the exclusion list is nonempty.
 
 The automatic-break gate uses public CoreGraphics input-idle timing and mouse-button
 state. It requires three seconds without activity and does not install an event tap
@@ -64,6 +65,8 @@ its windows immediately without waiting for the entrance animation.
 The status menu's normal heading is OpenAway. It opens General through Settings
 and labels its reminder toggle Pause or Resume. It has no duplicate Open OpenAway
 command.
+The menu bar button updates its title and tooltip only when their text changes,
+avoiding redundant native layout and redraw work on the half-second pulse.
 
 Blur mode uses an active `NSVisualEffectView` with `behindWindow` blending in clear,
 nonopaque break windows. The desktop is never captured. The message and countdown

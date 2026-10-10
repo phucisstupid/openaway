@@ -312,18 +312,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
 
     func updateStatusItem() {
         guard let button = statusItem?.button else { return }
+        let title: String
         if model.settings.showCountdownInMenuBar {
             let seconds = model.engine.remainingSeconds
             let time = String(format: "%d:%02d", seconds / 60, seconds % 60)
-            button.title =
+            title =
                 model.engine.phase == .paused ? " Ⅱ" : model.isShowingHeadsUp && seconds == 0 ? " ···" : " \(time)"
         } else {
-            button.title = ""
+            title = ""
         }
-        button.toolTip =
+        if button.title != title { button.title = title }
+        let toolTip =
             model.engine.phase == .paused
             ? "OpenAway — \(model.engine.pauseReason ?? "Paused")"
             : "OpenAway — \(model.engine.phase == .resting ? "Time to rest" : "Your next moment of rest")"
+        if button.toolTip != toolTip { button.toolTip = toolTip }
     }
 
     func menuNeedsUpdate(_ menu: NSMenu) {
@@ -581,6 +584,31 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         check(
             statusMenu.items.first { $0.action == #selector(togglePause) }?.title == "Pause",
             "active reminders show Pause in the status menu")
+        if let button = statusItem?.button {
+            updateStatusItem()
+            let title = button.title
+            let toolTip = button.toolTip
+            var titleUpdates = 0
+            var toolTipUpdates = 0
+            let titleObservation = button.observe(\.title) { _, _ in titleUpdates += 1 }
+            let toolTipObservation = button.observe(\.toolTip) { _, _ in toolTipUpdates += 1 }
+            defer {
+                titleObservation.invalidate()
+                toolTipObservation.invalidate()
+            }
+            updateStatusItem()
+            check(titleUpdates == 0 && toolTipUpdates == 0, "unchanged status text avoids native updates")
+            button.title = ""
+            button.toolTip = nil
+            titleUpdates = 0
+            toolTipUpdates = 0
+            updateStatusItem()
+            check(
+                titleUpdates == 1 && toolTipUpdates == 1 && button.title == title && button.toolTip == toolTip,
+                "changed status text still updates")
+        } else {
+            failures.append("status button available")
+        }
         check(AppModel.resetSettingsSmokeCheck(), "reset restores all preferences and preserves break history")
         check(
             AppModel.historySmokeCheck(),

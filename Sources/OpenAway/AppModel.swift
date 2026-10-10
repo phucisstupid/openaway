@@ -408,7 +408,7 @@ final class AppModel: ObservableObject {
             reason = "Screen is locked"
         } else if manuallyPaused {
             reason = manualPauseUntil == nil ? "Paused by you" : "Taking a pause"
-        } else if !resting,
+        } else if !resting, !settings.excludedBundleIDs.isEmpty,
             let active = NSWorkspace.shared.frontmostApplication,
             let id = active.bundleIdentifier,
             settings.excludedBundleIDs.contains(id)
