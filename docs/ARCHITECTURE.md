@@ -62,9 +62,9 @@ New break windows, including previews, fade in together over 0.55 seconds with a
 native ease-in/ease-out curve. Reduce Motion uses a brief 0.12-second opacity fade.
 Keyboard handling is active throughout the transition; dismissing a break closes
 its windows immediately without waiting for the entrance animation.
-The status menu's normal heading is OpenAway. It opens General through Settings
-and labels its reminder toggle Pause or Resume. It has no duplicate Open OpenAway
-command.
+The status menu's normal heading is OpenAway followed by the bundle version.
+It opens General through Settings and labels its reminder toggle Pause or Resume.
+It has no duplicate Open OpenAway command.
 The menu bar button updates its title and tooltip only when their text changes,
 avoiding redundant native layout and redraw work on the half-second pulse.
 

@@ -336,7 +336,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         case .paused: title = model.engine.pauseReason ?? "Paused"
         case .resting: title = "Enjoy a moment away"
         case .preparing where model.engine.remainingSeconds == 0: title = "Waiting for a pause in your work"
-        default: title = "OpenAway"
+        default:
+            let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
+            title = version.map { "OpenAway \($0)" } ?? "OpenAway"
         }
         let summary = NSMenuItem(title: title, action: nil, keyEquivalent: "")
         summary.isEnabled = false
