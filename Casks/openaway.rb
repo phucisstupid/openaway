@@ -1,6 +1,6 @@
 cask "openaway" do
-  version "0.6.1"
-  sha256 "8038684ba39f91953b3dadaf6dcdf4508d438d068f72a820c72dfd32e14a0f26"
+  version "0.6.2"
+  sha256 "d71c95e79801a7df165e4652c1501ae60a0f05d136bcac8e278bcbf88d48f10f"
 
   url "https://github.com/phucisstupid/openaway/releases/download/v#{version}/OpenAway-macos-arm64.zip"
   name "OpenAway"
