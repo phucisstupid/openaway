@@ -91,8 +91,6 @@ jobs:
           GH_REPO: ${{ github.repository }}
         run: |
           RELEASE_NOTES=$(git for-each-ref --format='%(contents)' "refs/tags/$RELEASE_TAG")
-          RELEASE_NOTES+=$'\n\n'
-          RELEASE_NOTES+="Apple Silicon ZIP: OpenAway-macos-arm64.zip. Universal ZIP: OpenAway-macos-universal.zip, for Apple Silicon and Intel. Requires macOS 13 or later. Ad-hoc signed, not notarized. If macOS blocks the app, use System Settings > Privacy & Security > Open Anyway."
           gh release create "$RELEASE_TAG" \
             dist/OpenAway-macos-arm64.zip dist/OpenAway-macos-arm64.zip.sha256 \
             dist/OpenAway-macos-universal.zip dist/OpenAway-macos-universal.zip.sha256 \
