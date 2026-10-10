@@ -27,7 +27,9 @@ idle time, sound, or persistence.
 ## Application model
 
 `AppModel` runs on the main actor. A half-second pulse advances active timers and
-publishes state for the views. While paused, it checks for resume conditions and
+publishes engine state only when the countdown second or phase changes, avoiding
+redundant updates across every observed view. The timer has 50 milliseconds of
+tolerance for wakeup coalescing. While paused, it checks for resume conditions and
 reminder expiry without publishing unchanged engine state. Day or calendar changes
 still refresh Activity while paused. It converts system conditions into pause reasons,
 with system/display sleep, screen lock, and manual pause taking priority over
@@ -140,6 +142,9 @@ Liquid Glass uses the system glassEffect/button APIs on macOS 26+, with native
 material/control fallbacks. SwiftUI views observe `AppModel`. Shared colors and background renderers
 live in `Theme.swift`. Custom message editing uses a draft committed on submission
 or focus loss, so validation does not interfere with typing spaces.
+Closing the dashboard commits field editing and releases its SwiftUI controllers
+and content. Reopening rebuilds the views in the same native window, preserving
+its position and selected page.
 The dashboard window ends native field editing on outside clicks without
 consuming the click, so blank space clears focus and controls remain responsive.
 

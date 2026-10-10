@@ -91,21 +91,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
             window.minSize = NSSize(width: width, height: 620)
             window.isReleasedWhenClosed = false
             let frameName = smokeTesting ? "OpenAwayDashboardSmoke-\(UUID().uuidString)" : "OpenAwayDashboardExpanded"
-            let controller = NSSplitViewController()
-            controller.splitView.isVertical = true
-            controller.splitView.dividerStyle = .thin
-            let sidebar = NSSplitViewItem(
-                sidebarWithViewController: NSHostingController(rootView: DashboardSidebarView(model: model)))
-            sidebar.minimumThickness = 200
-            sidebar.maximumThickness = 200
-            sidebar.canCollapse = false
-            sidebar.allowsFullHeightLayout = true
-            sidebar.titlebarSeparatorStyle = .none
-            controller.addSplitViewItem(sidebar)
-            let detail = NSSplitViewItem(viewController: NSHostingController(rootView: DashboardView(model: model)))
-            detail.minimumThickness = 522
-            controller.addSplitViewItem(detail)
-            window.contentViewController = controller
+            installDashboardContent(in: window)
             window.delegate = self
             if !window.setFrameUsingName(frameName) {
                 let visible =
@@ -128,8 +114,38 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
             }
             dashboard = window
         }
+        if let window = dashboard, window.contentViewController == nil {
+            let frame = window.frame
+            installDashboardContent(in: window)
+            window.setFrame(frame, display: false)
+        }
         dashboard?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
+    }
+
+    private func installDashboardContent(in window: NSWindow) {
+        let controller = NSSplitViewController()
+        controller.splitView.isVertical = true
+        controller.splitView.dividerStyle = .thin
+        let sidebar = NSSplitViewItem(
+            sidebarWithViewController: NSHostingController(rootView: DashboardSidebarView(model: model)))
+        sidebar.minimumThickness = 200
+        sidebar.maximumThickness = 200
+        sidebar.canCollapse = false
+        sidebar.allowsFullHeightLayout = true
+        sidebar.titlebarSeparatorStyle = .none
+        controller.addSplitViewItem(sidebar)
+        let detail = NSSplitViewItem(viewController: NSHostingController(rootView: DashboardView(model: model)))
+        detail.minimumThickness = 522
+        controller.addSplitViewItem(detail)
+        window.contentViewController = controller
+    }
+
+    func windowWillClose(_ notification: Notification) {
+        guard let window = notification.object as? NSWindow, window === dashboard else { return }
+        window.endEditing(for: nil)
+        window.contentViewController = nil
+        window.contentView = nil
     }
 
     func applyAppearance() {
@@ -541,7 +557,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
             let initialFrame = window.frame
             window.setFrameOrigin(NSPoint(x: initialFrame.minX + 8, y: initialFrame.minY + 8))
             let movedFrame = window.frame
+            let contentReleased = { [weak content = window.contentViewController] in content == nil }
             window.close()
+            check(
+                window.contentView == nil && window.contentViewController == nil, "closed settings detaches its views")
+            // AppKit can retain removed views until the current event finishes.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                check(contentReleased(), "closed settings releases its controllers")
+            }
             openSettings()
             check(
                 dashboard === window && window.isVisible && window.frame == movedFrame,
@@ -615,6 +638,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         check(
             AppModel.historySmokeCheck(),
             "activity statistics cache preserves totals, date ordering, calendar changes, and history invalidation")
+        check(AppModel.activePulseSmokeCheck(), "active pulses publish only countdown changes and preserve transitions")
         check(AppModel.pausedPulseSmokeCheck(), "paused pulses avoid engine publications and timed pauses still resume")
         check(
             AppModel.breakImageSmokeCheck { pictureModel in

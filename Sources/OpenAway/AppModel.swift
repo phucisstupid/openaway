@@ -90,7 +90,10 @@ final class AppModel: ObservableObject {
         timer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
             Task { @MainActor [weak self] in self?.pulse() }
         }
-        if let timer { RunLoop.main.add(timer, forMode: .common) }
+        if let timer {
+            timer.tolerance = 0.05
+            RunLoop.main.add(timer, forMode: .common)
+        }
         pulse()
     }
 
@@ -352,8 +355,14 @@ final class AppModel: ObservableObject {
         let calendar = Calendar.current
         let day = calendar.startOfDay(for: now)
         if engine.phase != .paused {
-            consume(engine.tick(now: now, allowAutomaticBreak: idle.isFinite && idle >= 3 && !isPreviewing))
-        } else if activityCalendar != calendar || activityDay != day {
+            var updated = engine
+            let events = updated.tick(now: now, allowAutomaticBreak: idle.isFinite && idle >= 3 && !isPreviewing)
+            if updated.remainingSeconds != engine.remainingSeconds || updated.phase != engine.phase || !events.isEmpty {
+                engine = updated
+            }
+            consume(events)
+        }
+        if activityCalendar != calendar || activityDay != day {
             // Activity totals still roll over while the timer stays paused.
             objectWillChange.send()
         }
@@ -534,6 +543,42 @@ final class AppModel: ObservableObject {
         model.clearHistory()
         return model.completedToday == 0 && model.restedTodaySeconds == 0 && model.streakDays == 0
             && model.recentBreaks.isEmpty
+    }
+
+    static func activePulseSmokeCheck() -> Bool {
+        let model = AppModel(persists: false)
+        model.settings.pauseForMeetings = false
+        model.settings.pauseForVideo = false
+        model.settings.idlePauseEnabled = false
+        model.settings.postureReminderEnabled = false
+        let now = Date()
+        model.engine = BreakEngine(settings: model.settings, now: now)
+        model.activityDay = Calendar.current.startOfDay(for: now)
+        var publications = 0
+        let subscription = model.$engine.dropFirst().sink { _ in publications += 1 }
+        defer { subscription.cancel() }
+        model.pulse(now: now.addingTimeInterval(0.25), inputIdleSeconds: 0)
+        model.pulse(now: now.addingTimeInterval(0.5), inputIdleSeconds: 0)
+        guard publications == 0 else { return false }
+        model.pulse(now: now.addingTimeInterval(1), inputIdleSeconds: 0)
+        guard publications == 1,
+            model.engine.remainingSeconds == model.settings.breakIntervalMinutes * 60 - 1
+        else { return false }
+        let warning = now.addingTimeInterval(Double(model.settings.breakIntervalMinutes * 60))
+        model.pulse(now: warning, inputIdleSeconds: 0)
+        guard model.isShowingHeadsUp, model.engine.remainingSeconds == 5 else { return false }
+        model.pulse(now: warning.addingTimeInterval(5), inputIdleSeconds: 0)
+        guard model.isShowingHeadsUp, model.engine.remainingSeconds == 0 else { return false }
+        let count = publications
+        model.pulse(now: warning.addingTimeInterval(5.5), inputIdleSeconds: 2.9)
+        guard publications == count, model.records.isEmpty else { return false }
+        model.pulse(now: warning.addingTimeInterval(6), inputIdleSeconds: 3)
+        guard model.engine.phase == .resting,
+            model.engine.remainingSeconds == model.settings.breakDurationSeconds
+        else { return false }
+        model.pulse(
+            now: warning.addingTimeInterval(6 + Double(model.settings.breakDurationSeconds)), inputIdleSeconds: 3)
+        return model.engine.phase == .focusing && model.records.count == 1 && model.records[0].completed
     }
 
     static func pausedPulseSmokeCheck() -> Bool {
