@@ -171,6 +171,11 @@ login-item approval still need manual validation on supported macOS versions.
 
 ## Releases
 
+The shared build script renders `scripts/make-icon.swift` into a temporary iconset
+and ICNS file, then bundles the ICNS before signing. Local and GitHub release
+builds generate the same icon from source; generated icon files stay out of Git.
+Release archive verification requires a nonempty bundled icon.
+
 `release.yml` checks out the explicit tag ref, verifies its version, and tests the app on `macos-26`. It uses
 `./scripts/build-app.sh` for a native arm64 build, verifies its architecture and
 signature, and names the archive `OpenAway-macos-arm64.zip`. It then runs the

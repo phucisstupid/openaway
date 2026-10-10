@@ -52,7 +52,7 @@ jobs:
           [[ "$(git rev-parse "refs/tags/$RELEASE_TAG^{commit}")" == "$(git rev-parse HEAD)" ]] || exit 1
       - name: Test timer behavior
         run: swift test
-      - name: Build arm64 app
+      - name: Build arm64 app and icon
         run: |
           set -euo pipefail
           [[ "$(uname -m)" == arm64 ]] || exit 1
@@ -66,12 +66,13 @@ jobs:
           ditto -x -k dist/OpenAway-macos-arm64.zip "$VERIFY_DIR"
           APP_VERSION=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$VERIFY_DIR/OpenAway.app/Contents/Info.plist")
           [[ "$RELEASE_TAG" == "v$APP_VERSION" ]] || exit 1
+          test -s "$VERIFY_DIR/OpenAway.app/Contents/Resources/AppIcon.icns"
           codesign --verify --deep --strict "$VERIFY_DIR/OpenAway.app"
           [[ "$(lipo -archs "$VERIFY_DIR/OpenAway.app/Contents/MacOS/OpenAway")" == arm64 ]] || exit 1
           cd dist
           shasum -a 256 OpenAway-macos-arm64.zip > OpenAway-macos-arm64.zip.sha256
           shasum -a 256 -c OpenAway-macos-arm64.zip.sha256
-      - name: Build universal app
+      - name: Build universal app and icon
         run: ./scripts/build-app.sh --universal
       - name: Verify release archive and checksum
         run: |
@@ -79,6 +80,7 @@ jobs:
           VERIFY_DIR=$(mktemp -d)
           trap 'rm -rf "$VERIFY_DIR"' EXIT
           ditto -x -k dist/OpenAway-macos-universal.zip "$VERIFY_DIR"
+          test -s "$VERIFY_DIR/OpenAway.app/Contents/Resources/AppIcon.icns"
           codesign --verify --deep --strict "$VERIFY_DIR/OpenAway.app"
           lipo "$VERIFY_DIR/OpenAway.app/Contents/MacOS/OpenAway" -verify_arch arm64
           lipo "$VERIFY_DIR/OpenAway.app/Contents/MacOS/OpenAway" -verify_arch x86_64

@@ -41,9 +41,8 @@ else
 fi
 cp -X "$PROJECT_ROOT/Resources/Info.plist" "$APP_DIR/Contents/Info.plist"
 cp -X "$PROJECT_ROOT/LICENSE" "$APP_DIR/Contents/Resources/LICENSE.txt"
-if [[ -f "$PROJECT_ROOT/Resources/AppIcon.icns" ]]; then
-    cp -X "$PROJECT_ROOT/Resources/AppIcon.icns" "$APP_DIR/Contents/Resources/AppIcon.icns"
-fi
+swift "$PROJECT_ROOT/scripts/make-icon.swift" "$APP_WORK_DIR/AppIcon.iconset"
+cp -X "$APP_WORK_DIR/AppIcon.icns" "$APP_DIR/Contents/Resources/AppIcon.icns"
 chmod +x "$APP_DIR/Contents/MacOS/OpenAway"
 codesign --force --sign - "$APP_DIR"
 codesign --verify --deep --strict "$APP_DIR"

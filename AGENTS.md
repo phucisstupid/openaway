@@ -104,6 +104,9 @@ Use the `DEVELOPER_DIR` override rather than changing the system’s selected Xc
 Run checks appropriate to the change, and report any checks you could not run.
 Manually verify multiple displays and login-item approval when affected.
 
+The build script generates the app icon from `scripts/make-icon.swift` for both
+local and GitHub workflow builds. Generated `.icns` and `.iconset` files are not
+tracked in Git.
 The build script assembles, signs, and archives in a temporary directory to avoid
 Finder/cloud metadata during signing. Generated `.build/`, `.swiftpm/`, and `dist/`
 content stays out of Git. Local builds produce an app and ZIP, not a DMG.
