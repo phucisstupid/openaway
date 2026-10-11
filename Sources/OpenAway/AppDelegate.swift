@@ -638,6 +638,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         check(
             AppModel.historySmokeCheck(),
             "activity statistics cache preserves totals, date ordering, calendar changes, and history invalidation")
+        check(AppModel.sleepResetSmokeCheck(), "sleep resets focus on return when enabled and preserves active breaks")
         check(AppModel.activePulseSmokeCheck(), "active pulses publish only countdown changes and preserve transitions")
         check(AppModel.pausedPulseSmokeCheck(), "paused pulses avoid engine publications and timed pauses still resume")
         check(

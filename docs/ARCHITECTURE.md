@@ -34,7 +34,10 @@ reminder expiry without publishing unchanged engine state. Day or calendar chang
 still refresh Activity while paused. It converts system conditions into pause reasons,
 with system/display sleep, screen lock, and manual pause taking priority over
 foreground-app exclusion, meeting/media activity, and idle detection. Idle detection is disabled during
-rest, since looking away is the purpose of a break.
+rest, since looking away is the purpose of a break. System or display sleep also
+marks focus as away when idle pausing is enabled. Once sleep, lock, and other pause
+conditions clear, the fresh-timer preference resets focus; active breaks resume
+their remaining duration instead.
 Foreground-app exclusion queries run only when the exclusion list is nonempty.
 
 The automatic-break gate uses public CoreGraphics input-idle timing and mouse-button

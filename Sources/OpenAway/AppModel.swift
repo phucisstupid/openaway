@@ -412,6 +412,7 @@ final class AppModel: ObservableObject {
         let resting = engine.phase == .resting || (engine.phase == .paused && pausedDuringRest)
         var reason: String?
         if isSleeping || isDisplaySleeping {
+            if !resting && settings.idlePauseEnabled { pausedForIdle = true }
             reason = "Computer is asleep"
         } else if isLocked {
             reason = "Screen is locked"
@@ -543,6 +544,43 @@ final class AppModel: ObservableObject {
         model.clearHistory()
         return model.completedToday == 0 && model.restedTodaySeconds == 0 && model.streakDays == 0
             && model.recentBreaks.isEmpty
+    }
+
+    static func sleepResetSmokeCheck() -> Bool {
+        for (idleEnabled, resetEnabled) in [(true, true), (true, false), (false, true)] {
+            for duringBreak in [false, true] {
+                let model = AppModel(persists: false)
+                model.settings.pauseForMeetings = false
+                model.settings.pauseForVideo = false
+                model.settings.idlePauseEnabled = idleEnabled
+                model.settings.resetAfterIdle = resetEnabled
+                model.settings.idleThresholdMinutes = 60
+                model.settings.soundEnabled = false
+                let now = Date()
+                model.engine = BreakEngine(settings: model.settings, now: now.addingTimeInterval(-60))
+                if duringBreak {
+                    _ = model.engine.startBreak(now: now.addingTimeInterval(-5))
+                }
+                _ = model.engine.tick(now: now)
+                let remaining = model.engine.remainingSeconds
+                model.setDisplaySleeping(true)
+                model.setSleeping(true)
+                model.setLocked(true)
+                guard model.engine.phase == .paused else { return false }
+                model.setSleeping(false)
+                model.setDisplaySleeping(false)
+                guard model.engine.phase == .paused else { return false }
+                model.setLocked(false)
+                model.synchronizePause(now: Date(), inputIdleSeconds: 0)
+                let expected =
+                    !duringBreak && idleEnabled && resetEnabled
+                    ? model.settings.breakIntervalMinutes * 60 : remaining
+                guard model.engine.phase == (duringBreak ? .resting : .focusing),
+                    model.engine.remainingSeconds == expected, model.records.isEmpty
+                else { return false }
+            }
+        }
+        return true
     }
 
     static func activePulseSmokeCheck() -> Bool {
