@@ -23,10 +23,8 @@ jobs:
       - name: Test staged Swift hook
         if: matrix.os == 'macos-26'
         run: ./scripts/test-hooks.sh
-      - name: Test release and cask automation
-        run: |
-          ruby scripts/test-cask.rb
-          ruby scripts/test-release.rb
+      - name: Test release automation
+        run: ruby scripts/test-release.rb
       - name: Test timer behavior
         run: swift test
       - name: Build native app

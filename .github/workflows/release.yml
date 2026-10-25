@@ -9,11 +9,6 @@ on:
         description: Existing version tag to release (for example, v0.4.7)
         required: true
         type: string
-      update_cask_only:
-        description: Only sync the cask for an already published release
-        required: false
-        default: false
-        type: boolean
       dmg_only:
         description: Only create a DMG for an already published release
         required: false
@@ -30,7 +25,7 @@ concurrency:
 
 jobs:
   release:
-    if: ${{ !inputs.update_cask_only && !inputs.dmg_only }}
+    if: ${{ !inputs.dmg_only }}
     runs-on: macos-26
     timeout-minutes: 30
     permissions:
@@ -114,10 +109,6 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          if [[ "${{ inputs.update_cask_only || false }}" == true ]]; then
-            echo "::error::Select only one recovery option: dmg_only or update_cask_only."
-            exit 1
-          fi
           [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || exit 1
           EXISTING_DMG=$(gh release view "$RELEASE_TAG" --json assets --jq 'any(.assets[]; .name == "OpenAway-macos-universal.dmg" or .name == "OpenAway-macos-universal.dmg.sha256" or .name == "OpenAway-macos.dmg" or .name == "OpenAway-macos.dmg.sha256")')
           if [[ "$EXISTING_DMG" == true ]]; then
@@ -200,65 +191,3 @@ jobs:
             fi
             rm -rf "$DMG_WORK_DIR"
           fi
-
-  update-cask:
-    needs: release
-    if: ${{ !cancelled() && !inputs.dmg_only && (needs.release.result == 'success' || (github.event_name == 'workflow_dispatch' && inputs.update_cask_only)) }}
-    runs-on: macos-26
-    timeout-minutes: 10
-    permissions:
-      contents: write
-    concurrency:
-      group: cask-update
-      cancel-in-progress: false
-      queue: max
-    env:
-      RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
-      DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
-      GH_TOKEN: ${{ github.token }}
-      GH_REPO: ${{ github.repository }}
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          ref: ${{ github.event.repository.default_branch }}
-      - name: Test release and cask automation
-        run: |
-          ruby scripts/test-cask.rb
-          ruby scripts/test-release.rb
-      - name: Sync cask with published release
-        run: |
-          set -euo pipefail
-          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || exit 1
-          UNPUBLISHED_OR_PRERELEASE=$(gh release view "$RELEASE_TAG" --json isDraft,isPrerelease --jq '.isDraft or .isPrerelease')
-          if [[ "$UNPUBLISHED_OR_PRERELEASE" != false ]]; then
-            echo "Skipping $RELEASE_TAG; only published stable releases can update the cask"
-            exit 0
-          fi
-          ASSET_DIR=$(mktemp -d)
-          trap 'rm -rf "$ASSET_DIR"' EXIT
-          gh release download "$RELEASE_TAG" --pattern 'OpenAway-macos-arm64.zip' --pattern 'OpenAway-macos-arm64.zip.sha256' --dir "$ASSET_DIR"
-          [[ "$(wc -l < "$ASSET_DIR/OpenAway-macos-arm64.zip.sha256")" -eq 1 ]] || exit 1
-          read -r CHECKSUM ASSET_NAME < "$ASSET_DIR/OpenAway-macos-arm64.zip.sha256"
-          [[ "$CHECKSUM" =~ ^[a-f0-9]{64}$ && "$ASSET_NAME" == "OpenAway-macos-arm64.zip" ]] || exit 1
-          (cd "$ASSET_DIR" && shasum -a 256 -c OpenAway-macos-arm64.zip.sha256)
-          mkdir "$ASSET_DIR/verify"
-          ditto -x -k "$ASSET_DIR/OpenAway-macos-arm64.zip" "$ASSET_DIR/verify"
-          APP="$ASSET_DIR/verify/OpenAway.app"
-          APP_VERSION=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP/Contents/Info.plist")
-          [[ "$RELEASE_TAG" == "v$APP_VERSION" ]] || exit 1
-          codesign --verify --deep --strict "$APP"
-          [[ "$(lipo -archs "$APP/Contents/MacOS/OpenAway")" == arm64 ]] || exit 1
-          ruby scripts/update-cask.rb "${RELEASE_TAG#v}" "$CHECKSUM" Casks/openaway.rb
-          ruby -c Casks/openaway.rb
-      - name: Commit cask update
-        run: |
-          set -euo pipefail
-          if git diff --quiet -- Casks/openaway.rb; then
-            echo "No cask update needed"
-            exit 0
-          fi
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add Casks/openaway.rb
-          git commit -m "Update OpenAway cask to ${RELEASE_TAG#v}"
-          git push origin "HEAD:$DEFAULT_BRANCH"

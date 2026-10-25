@@ -197,15 +197,20 @@ Recovery accepts the legacy `OpenAway-macos.zip` name and refuses to overwrite
 either legacy or explicitly named universal DMG assets.
 Local builds continue to produce only the app and ZIP.
 
-A dependent cask job on `macos-26` checks out the default branch,
+The cask and its updater live in `phucisstupid/homebrew-tap`.
+That repository's hourly `Update OpenAway cask` workflow on `macos-26`
+checks out the tap's default branch,
 downloads the published arm64 ZIP and checksum, and verifies the checksum,
 bundle version, signature, and exact arm64 architecture before committing the
 cask version, checksum, arm64 asset URL, and Apple Silicon architecture requirement
-together using the Actions token. The existing cask stays valid until the first
-arm64 release supplies these assets. Both release runs and cask updates queue
+together using the tap's Actions token. Both release runs and cask updates queue
 pending work instead of replacing it. The cask accepts only published stable
 releases; the updater compares numeric versions to skip downgrades, independently
-of GitHub's Latest marker. It skips unchanged files and never force-pushes. A cask-only manual dispatch
-requires the arm64 assets and can recover a failed update without changing an
-existing release and performs the same bundle verification. The updater and
-offline workflow checks run in branch CI and before every cask synchronization.
+of GitHub's Latest marker. It skips unchanged files and never force-pushes.
+A manual dispatch in the tap accepts an existing tag, requires the arm64 assets,
+and performs the same bundle verification without changing the release.
+The updater and offline workflow checks run in the tap's branch CI and before
+every cask synchronization. GitHub can disable schedules after 60 days of
+repository inactivity; the workflow can be re-enabled and dispatched manually.
+This app repository keeps a `tap_migrations.json` entry for the former
+`phucisstupid/openaway` tap.

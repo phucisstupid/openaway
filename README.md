@@ -14,8 +14,7 @@ Download the latest [**OpenAway-macos-universal.dmg**](https://github.com/phucis
 Or install with Homebrew:
 
 ```sh
-brew tap phucisstupid/openaway https://github.com/phucisstupid/openaway
-brew install --cask phucisstupid/openaway/openaway
+brew install --cask phucisstupid/tap/openaway
 ```
 
 Homebrew installs the Apple Silicon build. The DMG supports Apple Silicon and Intel.
@@ -42,7 +41,7 @@ swift test
 ```
 
 With Command Line Tools only, use `./scripts/test-core.sh` instead of `swift test`.
-Run `ruby scripts/test-cask.rb` and `ruby scripts/test-release.rb` to check release automation on macOS.
+Run `ruby scripts/test-release.rb` to check release automation.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for verification and [ARCHITECTURE.md](docs/ARCHITECTURE.md) for the implementation structure.
 Repository guidance lives in [AGENTS.md](AGENTS.md).

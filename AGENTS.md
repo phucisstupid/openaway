@@ -22,7 +22,8 @@ with Xcode 26+ or matching Command Line Tools. There are no external package dep
   activity detection, and SwiftUI views.
 - `Tests/OpenAwayCoreTests/`: XCTest tests with synthetic dates.
 - `scripts/`: local packaging, the Command Line Tools test fallback, and icon generation.
-- `Casks/openaway.rb`: the Homebrew cask, hosted in this repository as a tap.
+- `tap_migrations.json`: redirects the former app tap to `phucisstupid/tap`.
+  The Homebrew cask and its updater live in `phucisstupid/homebrew-tap`.
 
 Prefer existing helpers, standard-library functions, and native platform controls.
 Keep changes small. Do not add speculative abstractions or dependencies.
@@ -134,14 +135,12 @@ or installation boilerplate.
    script to produce and verify `OpenAway-macos-arm64.zip`, then builds the
    universal `OpenAway-macos-universal.zip`. Wait for both ZIPs,
    `OpenAway-macos-universal.dmg`, and their SHA256 files.
-3. The workflow downloads the published arm64 ZIP/checksum, verifies them, and
+3. The shared tap's hourly `Update OpenAway cask` workflow downloads the published
+   arm64 ZIP/checksum, verifies them, and
    commits the cask's `version`, `sha256`, arm64 asset URL, and Apple Silicon
-   architecture requirement together to the default branch as the Actions bot.
+   architecture requirement together to the tap's default branch as the Actions bot.
    It skips older releases and unchanged casks. Never use a local build's checksum
    for a workflow-built release.
-
-Keep the current cask URL and checksum valid until an arm64 release is published;
-the updater migrates the cask to Apple Silicon only when those assets exist.
 
 The separate `create-dmg` job verifies the published ZIP, packages the same
 universal app using the latest published `create-dmg/create-dmg` release as
@@ -155,12 +154,14 @@ the existing tag and `dmg_only` enabled to add a DMG without rebuilding the app
 or bumping its version. Recovery also accepts the legacy universal ZIP name
 `OpenAway-macos.zip` and refuses to overwrite either DMG naming scheme.
 
-If publishing succeeds but the cask update fails, dispatch `Release` with the
-existing tag and `update_cask_only` enabled. This requires that release's arm64
+If publishing succeeds but the cask update fails, dispatch `Update OpenAway cask`
+in `phucisstupid/homebrew-tap` with the existing tag. This requires that release's arm64
 ZIP and checksum and does not rebuild or replace the release. Branch protection
 must permit the bot's normal push; concurrent branch changes cause a visible
 failure rather than a force push. Verify updater changes
-with `ruby scripts/test-cask.rb`.
+with `ruby scripts/test-cask.rb` and `ruby scripts/test-release.rb` in the tap.
+GitHub disables scheduled workflows after 60 days of repository inactivity;
+re-enable the tap workflow if needed before dispatching it.
 
 Update architecture notes when behavior changes. Use original artwork,
 preserve the MIT license, and describe OpenAway as an independent project.
