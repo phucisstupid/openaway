@@ -1,6 +1,6 @@
 # OpenAway
 
-[![Watch the OpenAway launch video](docs/assets/OpenAway-video.jpg)](docs/assets/OpenAway.mp4)
+https://github.com/user-attachments/assets/6c6902e1-1c5e-4e9e-8c2b-2daf3a58ad65
 
 A native, open-source break reminder for macOS.
 
