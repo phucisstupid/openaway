@@ -1,4 +1,8 @@
-<img src="docs/assets/OpenAway.png" width="112" height="112" alt="OpenAway app icon">
+[![Watch the OpenAway launch video](docs/assets/OpenAway-video.jpg)](docs/assets/OpenAway.mp4)
+
+Click the preview to watch the 22-second video.
+
+Music: “Happy Beats / Business Moves Vol. 12” by [Sascha Ende](https://ende.app/en), [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) (excerpted and mixed).
 
 # OpenAway
 
