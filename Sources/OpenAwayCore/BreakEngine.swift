@@ -135,8 +135,10 @@ public struct BreakEngine: Sendable {
             }
         }
         if let newDuration {
-            timerDuration = newDuration
-            let remaining = max(0, newDuration - elapsed)
+            // Keep the announced warning and active time already spent on this timer.
+            let minimumDuration = effectivePhase == .preparing ? timerDuration : elapsed
+            timerDuration = max(newDuration, minimumDuration)
+            let remaining = max(0, timerDuration - elapsed)
             if phase == .paused { suspendedRemaining = remaining } else { deadline = now.addingTimeInterval(remaining) }
         }
         if effectivePhase == .preparing, remainingInterval > TimeInterval(Self.headsUpSeconds) {

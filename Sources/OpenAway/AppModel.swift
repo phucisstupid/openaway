@@ -394,13 +394,15 @@ final class AppModel: ObservableObject {
     private static var inputIdleSeconds: TimeInterval {
         // Read activity timing only: no event tap, keystrokes, or input permission.
         // A held mouse button also counts as working, even while the pointer is still.
-        if [CGMouseButton.left, .right, .center].contains(where: {
-            CGEventSource.buttonState(.combinedSessionState, button: $0)
-        }) {
-            return 0
-        }
         let anyInput = CGEventType(rawValue: UInt32.max)!
-        return CGEventSource.secondsSinceLastEventType(.combinedSessionState, eventType: anyInput)
+        return inputIdleSeconds(
+            pressedMouseButtons: NSEvent.pressedMouseButtons,
+            secondsSinceLastInput: CGEventSource.secondsSinceLastEventType(.combinedSessionState, eventType: anyInput))
+    }
+
+    private static func inputIdleSeconds(pressedMouseButtons: Int, secondsSinceLastInput: TimeInterval) -> TimeInterval
+    {
+        pressedMouseButtons == 0 ? secondsSinceLastInput : 0
     }
 
     private func synchronizePause(now: Date, inputIdleSeconds: TimeInterval? = nil) {
@@ -610,7 +612,13 @@ final class AppModel: ObservableObject {
         let count = publications
         model.pulse(now: warning.addingTimeInterval(5.5), inputIdleSeconds: 2.9)
         guard publications == count, model.records.isEmpty else { return false }
-        model.pulse(now: warning.addingTimeInterval(6), inputIdleSeconds: 3)
+        for button in 0..<Int.bitWidth {
+            let idle = inputIdleSeconds(pressedMouseButtons: 1 << button, secondsSinceLastInput: 10)
+            model.pulse(now: warning.addingTimeInterval(6), inputIdleSeconds: idle)
+            guard model.isShowingHeadsUp, publications == count, model.records.isEmpty else { return false }
+        }
+        let idle = inputIdleSeconds(pressedMouseButtons: 0, secondsSinceLastInput: 3)
+        model.pulse(now: warning.addingTimeInterval(6), inputIdleSeconds: idle)
         guard model.engine.phase == .resting,
             model.engine.remainingSeconds == model.settings.breakDurationSeconds
         else { return false }

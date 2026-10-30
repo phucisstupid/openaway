@@ -18,6 +18,9 @@ Scheduled breaks always enter a five-second preparing phase, including after a
 late callback. `tick` and `resume` accept an `allowAutomaticBreak` input from the
 host. At zero, preparing remains active until that input allows a break; only then
 does the full rest duration begin. Explicit manual breaks bypass this gate.
+Reducing the interval during a warning preserves its remaining five-second notice,
+including while paused. Duration edits retain active rest already elapsed, even
+when the new duration is shorter, so history and subsequent edits remain accurate.
 
 Transitions return events for heads-up, break start, and break end. Incomplete
 breaks are recorded separately from completed breaks. Only completed short breaks
@@ -40,8 +43,9 @@ conditions clear, the fresh-timer preference resets focus; active breaks resume
 their remaining duration instead.
 Foreground-app exclusion queries run only when the exclusion list is nonempty.
 
-The automatic-break gate uses public CoreGraphics input-idle timing and mouse-button
-state. It requires three seconds without activity and does not install an event tap
+The automatic-break gate uses public CoreGraphics input-idle timing and AppKit's
+current mouse-button bitmask, including side buttons. It requires three seconds
+without activity and does not install an event tap
 or read keys. The advance popup is derived from the preparing phase, so it persists
 through activity and returns after pause or preview. Blink and posture reminders
 and their previews expire after 1.5 seconds.
@@ -189,6 +193,8 @@ the latest published `create-dmg/create-dmg` release, resolved at packaging time
 to package the same ad-hoc signed app in
 `OpenAway-macos-universal.dmg`. The shell tool receives a staging folder containing
 only the app; it sets a Finder layout with the app and an Applications shortcut.
+It leaves the app's extension visibility unchanged to avoid adding Finder metadata
+that would invalidate strict signature verification.
 It verifies the mounted signature,
 arm64/x86_64 architectures, and Applications link before uploading the DMG and
 its SHA256 without overwriting existing assets. A `dmg_only` manual dispatch adds

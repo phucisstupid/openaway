@@ -162,7 +162,6 @@ jobs:
             --volname OpenAway \
             --window-pos 200 120 --window-size 600 400 \
             --icon-size 100 --icon OpenAway.app 160 180 \
-            --hide-extension OpenAway.app \
             --app-drop-link 440 180 \
             "$WORK_DIR/OpenAway-macos-universal.dmg" "$WORK_DIR/source"
           hdiutil verify OpenAway-macos-universal.dmg

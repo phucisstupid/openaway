@@ -321,6 +321,50 @@ final class BreakEngineTests: XCTestCase {
         XCTAssertEqual(engine.tick(now: time(120)), [.breakStarted(.short)])
     }
 
+    func testReducingIntervalPreservesRemainingHeadsUp() {
+        var settings = AppSettings()
+        settings.breakIntervalMinutes = 2
+        var engine = BreakEngine(settings: settings, now: origin)
+        XCTAssertEqual(engine.tick(now: time(115)), [.headsUp])
+        settings.breakIntervalMinutes = 1
+        engine.updateSettings(settings, now: time(116))
+        XCTAssertEqual(engine.phase, .preparing)
+        XCTAssertEqual(engine.remainingSeconds, 4)
+        XCTAssertEqual(engine.tick(now: time(119)), [])
+        XCTAssertEqual(engine.tick(now: time(120)), [.breakStarted(.short)])
+    }
+
+    func testReducingPausedIntervalPreservesRemainingHeadsUp() {
+        var settings = AppSettings()
+        settings.breakIntervalMinutes = 2
+        var engine = BreakEngine(settings: settings, now: origin)
+        XCTAssertEqual(engine.tick(now: time(115)), [.headsUp])
+        _ = engine.pause(now: time(116))
+        settings.breakIntervalMinutes = 1
+        engine.updateSettings(settings, now: time(200))
+        XCTAssertEqual(engine.phase, .paused)
+        XCTAssertEqual(engine.remainingSeconds, 4)
+        XCTAssertEqual(engine.resume(now: time(300)), [])
+        XCTAssertEqual(engine.phase, .preparing)
+        XCTAssertEqual(engine.tick(now: time(303)), [])
+        XCTAssertEqual(engine.tick(now: time(304)), [.breakStarted(.short)])
+    }
+
+    func testReducingThenExtendingIntervalKeepsElapsedFocus() {
+        var settings = AppSettings()
+        settings.breakIntervalMinutes = 2
+        var engine = BreakEngine(settings: settings, now: origin)
+        _ = engine.tick(now: time(115))
+        settings.breakIntervalMinutes = 1
+        engine.updateSettings(settings, now: time(116))
+        settings.breakIntervalMinutes = 3
+        engine.updateSettings(settings, now: time(117))
+        XCTAssertEqual(engine.phase, .focusing)
+        XCTAssertEqual(engine.remainingSeconds, 63)
+        XCTAssertEqual(engine.tick(now: time(175)), [.headsUp])
+        XCTAssertEqual(engine.tick(now: time(180)), [.breakStarted(.short)])
+    }
+
     func testEditingPausedPreparingTimerRearmsWarningAfterResume() {
         var engine = makeEngine()
         _ = engine.tick(now: time(55))
@@ -477,6 +521,67 @@ final class BreakEngineTests: XCTestCase {
         _ = engine.resume(now: time(200))
         _ = engine.tick(now: time(210))
         XCTAssertEqual(engine.remainingSeconds, 15)
+    }
+
+    func testShorteningPausedBreakBelowElapsedTimeKeepsCompletedActiveRest() throws {
+        for (kind, elapsed) in [(BreakKind.short, 15), (.long, 90)] {
+            var settings = AppSettings()
+            settings.longBreakDurationMinutes = 2
+            var engine = BreakEngine(settings: settings, now: origin)
+            _ = engine.startBreak(now: origin, kind: kind)
+            _ = engine.pause(now: time(TimeInterval(elapsed)))
+            settings.breakDurationSeconds = 5
+            settings.longBreakDurationMinutes = 1
+            engine.updateSettings(settings, now: time(200))
+            let record = try finishedRecord(engine.resume(now: time(300)))
+            XCTAssertTrue(record.completed)
+            XCTAssertEqual(record.kind, kind)
+            XCTAssertEqual(record.durationSeconds, elapsed)
+        }
+    }
+
+    func testShorteningBreakBelowElapsedTimeKeepsSkippedActiveRest() throws {
+        for (kind, elapsed) in [(BreakKind.short, 15), (.long, 90)] {
+            var settings = AppSettings()
+            settings.longBreakDurationMinutes = 2
+            var engine = BreakEngine(settings: settings, now: origin)
+            _ = engine.startBreak(now: origin, kind: kind)
+            settings.breakDurationSeconds = 5
+            settings.longBreakDurationMinutes = 1
+            engine.updateSettings(settings, now: time(TimeInterval(elapsed)))
+            let record = try finishedRecord(engine.skipBreak(now: time(TimeInterval(elapsed))))
+            XCTAssertFalse(record.completed)
+            XCTAssertEqual(record.kind, kind)
+            XCTAssertEqual(record.durationSeconds, elapsed)
+        }
+    }
+
+    func testShorteningThenRestoringPausedBreakDurationPreservesActiveElapsedTime() {
+        for (kind, elapsed, remaining, duration) in [(BreakKind.short, 15, 5, 20), (.long, 90, 30, 120)] {
+            var settings = AppSettings()
+            settings.longBreakDurationMinutes = 2
+            var engine = BreakEngine(settings: settings, now: origin)
+            _ = engine.startBreak(now: origin, kind: kind)
+            _ = engine.pause(now: time(TimeInterval(elapsed)))
+            settings.breakDurationSeconds = 5
+            settings.longBreakDurationMinutes = 1
+            engine.updateSettings(settings, now: time(200))
+            XCTAssertEqual(engine.remainingSeconds, 0)
+            settings.breakDurationSeconds = 20
+            settings.longBreakDurationMinutes = 2
+            engine.updateSettings(settings, now: time(250))
+            XCTAssertEqual(engine.remainingSeconds, remaining)
+            XCTAssertEqual(engine.resume(now: time(300)), [])
+            XCTAssertEqual(engine.remainingSeconds, remaining)
+            let events = engine.tick(now: time(TimeInterval(300 + remaining)))
+            XCTAssertEqual(events.count, 1)
+            if case .breakFinished(let record) = events.first {
+                XCTAssertTrue(record.completed)
+                XCTAssertEqual(record.durationSeconds, duration)
+            } else {
+                XCTFail("Expected the restored break to finish after its remaining active time")
+            }
+        }
     }
 
     func testClockMovingBackwardsCannotProduceInvalidProgress() {
